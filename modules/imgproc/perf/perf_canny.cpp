@@ -14,7 +14,7 @@ PERF_TEST_P(Img_Aperture_L2_thresholds, canny,
                 testing::Values( "cv/shared/lena.jpg", "stitching/b1.jpg", "cv/detectors_descriptors_evaluation/images_datasets/leuven/img1.png" ),
                 testing::Values( 3, 5 ),
                 testing::Bool(),
-                testing::Values( make_tuple(50.0, 100.0), make_tuple(0.0, 50.0), make_tuple(100.0, 120.0) )
+                testing::Values( std::tr1::make_tuple(50.0, 100.0), std::tr1::make_tuple(0.0, 50.0), std::tr1::make_tuple(100.0, 120.0) )
                 )
             )
 {

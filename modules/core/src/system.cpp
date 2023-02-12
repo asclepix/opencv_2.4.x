@@ -92,7 +92,7 @@
 #if defined ANDROID
 #include <sys/sysconf.h>
 #else
-#include <sys/sysctl.h>
+#include <linux/sysctl.h>
 #endif
 #endif
 

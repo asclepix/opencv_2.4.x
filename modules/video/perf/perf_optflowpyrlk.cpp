@@ -3,7 +3,7 @@
 using namespace std;
 using namespace cv;
 using namespace perf;
-using std::tr1::make_tuple;
+//using std::tr1::make_tuple;
 using std::tr1::get;
 
 typedef tr1::tuple<std::string, int, int, tr1::tuple<int,int>, int> Path_Idx_Cn_NPoints_WSize_t;
@@ -32,7 +32,7 @@ PERF_TEST_P(Path_Idx_Cn_NPoints_WSize, OpticalFlowPyrLK_full, testing::Combine(
                 testing::Values<std::string>("cv/optflow/frames/VGA_%02d.png", "cv/optflow/frames/720p_%02d.jpg"),
                 testing::Range(1, 3),
                 testing::Values(1, 3, 4),
-                testing::Values(make_tuple(9, 9), make_tuple(15, 15)),
+                testing::Values(std::tr1::make_tuple(9, 9), std::tr1::make_tuple(15, 15)),
                 testing::Values(7, 11, 25)
                 )
             )
@@ -100,7 +100,7 @@ PERF_TEST_P(Path_Idx_Cn_NPoints_WSize_Deriv, OpticalFlowPyrLK_self, testing::Com
                 testing::Values<std::string>("cv/optflow/frames/VGA_%02d.png", "cv/optflow/frames/720p_%02d.jpg"),
                 testing::Range(1, 3),
                 testing::Values(1, 3, 4),
-                testing::Values(make_tuple(9, 9), make_tuple(15, 15)),
+                testing::Values(std::tr1::make_tuple(9, 9), std::tr1::make_tuple(15, 15)),
                 testing::Values(7, 11, 25),
                 testing::Bool()
                 )

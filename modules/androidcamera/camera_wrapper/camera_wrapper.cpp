@@ -1,4 +1,4 @@
-#if !defined(ANDROID_r2_2_0) && !defined(ANDROID_r2_3_3) && !defined(ANDROID_r3_0_1) && !defined(ANDROID_r4_0_0) && !defined(ANDROID_r4_0_3)
+#if !defined(ANDROID_r2_2_0) && !defined(ANDROID_r2_3_3) && !defined(ANDROID_r3_0_1) && !defined(ANDROID_r4_0_0) && !defined(ANDROID_r4_0_3) && !defined(ANDROID_r4_1_1)
 # error Building camera wrapper for your version of Android is not supported by OpenCV. You need to modify OpenCV sources in order to compile camera wrapper for your version of Android.
 #endif
 
@@ -12,13 +12,18 @@
 #include "camera_wrapper.h"
 #include "../include/camera_properties.h"
 
-#if defined(ANDROID_r3_0_1) || defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3)
+#if defined(ANDROID_r3_0_1) || defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3) || defined(ANDROID_r4_1_1)
 //Include SurfaceTexture.h file with the SurfaceTexture class
 # include <gui/SurfaceTexture.h>
 # define MAGIC_OPENCV_TEXTURE_ID (0x10)
 #else // defined(ANDROID_r3_0_1) || defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3)
 //TODO: This is either 2.2 or 2.3. Include the headers for ISurface.h access
+#if defined(ANDROID_r4_1_1)
+#include <gui/ISurface.h>
+#include <gui/BufferQueue.h>
+#else
 # include <surfaceflinger/ISurface.h>
+#endif  // defined(ANDROID_r4_1_1)
 #endif  // defined(ANDROID_r3_0_1) || defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3)
 
 #include <string>
@@ -52,6 +57,21 @@
 #include <dlfcn.h>
 
 using namespace android;
+
+void debugShowFPS();
+
+#if defined(ANDROID_r4_1_1)
+class ConsumerListenerStub: public BufferQueue::ConsumerListener
+{
+public:
+    virtual void onFrameAvailable()
+    {
+    }
+    virtual void onBuffersReleased()
+    {
+    }
+};
+#endif
 
 void debugShowFPS()
 {
@@ -206,21 +226,21 @@ protected:
     {
 #if !defined(ANDROID_r2_2_0)
         if (focus_distance_type >= 0 && focus_distance_type < 3)
-	{
+    {
             float focus_distances[3];
             const char* output = params.get(CameraParameters::KEY_FOCUS_DISTANCES);
             int val_num = CameraHandler::split_float(output, focus_distances, ',', 3);
             if(val_num == 3)
-	    {
+        {
                 return focus_distances[focus_distance_type];
-            } 
+            }
             else
-	    {
+        {
                 LOGE("Invalid focus distances.");
             }
         }
 #endif
-	return -1;
+    return -1;
     }
 
     static int getModeNum(const char** modes, const int modes_num, const char* mode_name)
@@ -260,8 +280,8 @@ public:
     }
 
     virtual void postData(int32_t msgType, const sp<IMemory>& dataPtr
-#if defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3)
-                          ,camera_frame_metadata_t* metadata
+#if defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3) || defined(ANDROID_r4_1_1)
+                          ,camera_frame_metadata_t*
 #endif
                           )
     {
@@ -341,57 +361,57 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
     typedef sp<Camera> (*Android22ConnectFuncType)();
     typedef sp<Camera> (*Android23ConnectFuncType)(int);
     typedef sp<Camera> (*Android3DConnectFuncType)(int, int);
-    
+
     enum {
-	CAMERA_SUPPORT_MODE_2D = 0x01, /* Camera Sensor supports 2D mode. */
-	CAMERA_SUPPORT_MODE_3D = 0x02, /* Camera Sensor supports 3D mode. */
-	CAMERA_SUPPORT_MODE_NONZSL = 0x04, /* Camera Sensor in NON-ZSL mode. */
-	CAMERA_SUPPORT_MODE_ZSL = 0x08 /* Camera Sensor supports ZSL mode. */
+    CAMERA_SUPPORT_MODE_2D = 0x01, /* Camera Sensor supports 2D mode. */
+    CAMERA_SUPPORT_MODE_3D = 0x02, /* Camera Sensor supports 3D mode. */
+    CAMERA_SUPPORT_MODE_NONZSL = 0x04, /* Camera Sensor in NON-ZSL mode. */
+    CAMERA_SUPPORT_MODE_ZSL = 0x08 /* Camera Sensor supports ZSL mode. */
     };
-        
+
     const char Android22ConnectName[] = "_ZN7android6Camera7connectEv";
     const char Android23ConnectName[] = "_ZN7android6Camera7connectEi";
     const char Android3DConnectName[] = "_ZN7android6Camera7connectEii";
-    
+
     LOGD("CameraHandler::initCameraConnect(%p, %d, %p, %p)", callback, cameraId, userData, prevCameraParameters);
-    
+
     sp<Camera> camera = 0;
-    
+
     void* CameraHALHandle = dlopen("libcamera_client.so", RTLD_LAZY);
-    
+
     if (!CameraHALHandle)
     {
-	LOGE("Cannot link to \"libcamera_client.so\"");
-	return NULL;
+    LOGE("Cannot link to \"libcamera_client.so\"");
+    return NULL;
     }
-    
+
     // reset errors
     dlerror();
 
     if (Android22ConnectFuncType Android22Connect = (Android22ConnectFuncType)dlsym(CameraHALHandle, Android22ConnectName))
     {
-	LOGD("Connecting to CameraService v 2.2");
-	camera = Android22Connect();
+    LOGD("Connecting to CameraService v 2.2");
+    camera = Android22Connect();
     }
     else if (Android23ConnectFuncType Android23Connect = (Android23ConnectFuncType)dlsym(CameraHALHandle, Android23ConnectName))
     {
-	LOGD("Connecting to CameraService v 2.3");
-	camera = Android23Connect(cameraId);
+    LOGD("Connecting to CameraService v 2.3");
+    camera = Android23Connect(cameraId);
     }
     else if (Android3DConnectFuncType Android3DConnect = (Android3DConnectFuncType)dlsym(CameraHALHandle, Android3DConnectName))
     {
-	LOGD("Connecting to CameraService v 3D");
-	camera = Android3DConnect(cameraId, CAMERA_SUPPORT_MODE_2D);
+    LOGD("Connecting to CameraService v 3D");
+    camera = Android3DConnect(cameraId, CAMERA_SUPPORT_MODE_2D);
     }
     else
     {
-	dlclose(CameraHALHandle);
-	LOGE("Cannot connect to CameraService. Connect method was not found!");
-	return NULL;
-    }
-    
     dlclose(CameraHALHandle);
-    
+    LOGE("Cannot connect to CameraService. Connect method was not found!");
+    return NULL;
+    }
+
+    dlclose(CameraHALHandle);
+
     if ( 0 == camera.get() )
     {
         LOGE("initCameraConnect: Unable to connect to CameraService\n");
@@ -436,11 +456,11 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
         const char* available_focus_modes = handler->params.get(CameraParameters::KEY_SUPPORTED_FOCUS_MODES);
         if (available_focus_modes != 0)
         {
-	    if (strstr(available_focus_modes, "continuous-video") != NULL)
-	    {
-		handler->params.set(CameraParameters::KEY_FOCUS_MODE, CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO);
+        if (strstr(available_focus_modes, "continuous-video") != NULL)
+        {
+        handler->params.set(CameraParameters::KEY_FOCUS_MODE, CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO);
 
-		status_t resParams = handler->camera->setParameters(handler->params.flatten());
+        status_t resParams = handler->camera->setParameters(handler->params.flatten());
 
                 if (resParams != 0)
                 {
@@ -450,8 +470,8 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
                 {
                     LOGD("initCameraConnect: autofocus is set to mode \"continuous-video\"");
                 }
-	    }
-	}
+        }
+    }
 #endif
 
         //check if yuv420sp format available. Set this format as preview format.
@@ -506,9 +526,16 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
     pdstatus = camera->setPreviewTexture(surfaceTexture);
     if (pdstatus != 0)
         LOGE("initCameraConnect: failed setPreviewTexture call; camera migth not work correctly");
+#elif defined(ANDROID_r4_1_1)
+    sp<BufferQueue> bufferQueue = new BufferQueue();
+    sp<BufferQueue::ConsumerListener> queueListener = new ConsumerListenerStub();
+    bufferQueue->consumerConnect(queueListener);
+    pdstatus = camera->setPreviewTexture(bufferQueue);
+    if (pdstatus != 0)
+    LOGE("initCameraConnect: failed setPreviewTexture call; camera migth not work correctly");
 #endif
 
-#if !(defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3))
+#if (defined(ANDROID_r2_2_0) || defined(ANDROID_r2_3_3) || defined(ANDROID_r3_0_1))
 # if 1
     ////ATTENTION: switching between two versions: with and without copying memory inside Android OS
     //// see the method  CameraService::Client::copyFrameAndPostCopiedFrame and where it is used
@@ -520,6 +547,7 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
     camera->setPreviewCallbackFlags( CAMERA_FRAME_CALLBACK_FLAG_ENABLE_MASK | CAMERA_FRAME_CALLBACK_FLAG_COPY_OUT_MASK);//with copy
 #endif //!(defined(ANDROID_r4_0_0) || defined(ANDROID_r4_0_3))
 
+    LOGD("Starting preview");
     status_t resStart = camera->startPreview();
 
     if (resStart != 0)
@@ -527,6 +555,10 @@ CameraHandler* CameraHandler::initCameraConnect(const CameraCallback& callback, 
         LOGE("initCameraConnect: startPreview() fails. Closing camera connection...");
         handler->closeCameraConnect();
         handler = 0;
+    }
+    else
+    {
+    LOGD("Preview started successfully");
     }
 
     return handler;
@@ -546,10 +578,10 @@ void CameraHandler::closeCameraConnect()
 
     camera=NULL;
     // ATTENTION!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // When we set 
+    // When we set
     //    camera=NULL
     // above, the pointed instance of android::Camera object is destructed,
-    // since this member `camera' has type android::sp<Camera> (android smart pointer template class), 
+    // since this member `camera' has type android::sp<Camera> (android smart pointer template class),
     // and this is the only pointer to it.
     //
     // BUT this instance of CameraHandler is set as a listener for that android::Camera object
@@ -561,7 +593,7 @@ void CameraHandler::closeCameraConnect()
     // It means, when that instance of the android::Camera object is destructed,
     // it calls destructor for this CameraHandler instance too.
     //
-    // So, this line `camera=NULL' causes to the call `delete this' 
+    // So, this line `camera=NULL' causes to the call `delete this'
     // (see destructor of the template class android::sp)
     //
     // So, we must not call `delete this' after the line, since it just has been called indeed

@@ -4,10 +4,12 @@ Reading and Writing Images and Video
 .. highlight:: cpp
 
 imdecode
-------------
+--------
 Reads an image from a buffer in memory.
 
 .. ocv:function:: Mat imdecode( InputArray buf,  int flags )
+
+.. ocv:function:: Mat imdecode( InputArray buf,  int flags, Mat* dst )
 
 .. ocv:cfunction:: IplImage* cvDecodeImage( const CvMat* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
 
@@ -17,7 +19,9 @@ Reads an image from a buffer in memory.
 
     :param buf: Input array or vector of bytes.
 
-    :param flags: The same flags as in  :ocv:func:`imread` .
+    :param flags: The same flags as in :ocv:func:`imread` .
+    
+    :param dst: The optional output placeholder for the decoded matrix. It can save the image reallocations when the function is called repeatedly for images of the same size.
 
 The function reads an image from the specified buffer in the memory.
 If the buffer is too short or contains invalid data, the empty matrix/image is returned.
@@ -25,8 +29,10 @@ If the buffer is too short or contains invalid data, the empty matrix/image is r
 See
 :ocv:func:`imread` for the list of supported formats and flags description.
 
+.. note:: In the case of color images, the decoded images will have the channels stored in ``B G R`` order.
+
 imencode
-------------
+--------
 Encodes an image into a memory buffer.
 
 .. ocv:function:: bool imencode( const string& ext, InputArray img, vector<uchar>& buf, const vector<int>& params=vector<int>())
@@ -50,7 +56,7 @@ See
 .. note:: ``cvEncodeImage`` returns single-row matrix of type ``CV_8UC1`` that contains encoded image as array of bytes.
 
 imread
-----------
+------
 Loads an image from a file.
 
 .. ocv:function:: Mat imread( const string& filename, int flags=1 )
@@ -68,12 +74,19 @@ Loads an image from a file.
     :param filename: Name of file to be loaded.
 
     :param flags: Flags specifying the color type of a loaded image:
+    
+        * CV_LOAD_IMAGE_ANYDEPTH - If set, return 16-bit/32-bit image when the input has the corresponding depth, otherwise convert it to 8-bit.
+        
+        * CV_LOAD_IMAGE_COLOR - If set, always convert image to the color one
 
-        * **>0**  Return a 3-channel color image
+        * CV_LOAD_IMAGE_GRAYSCALE - If set, always convert image to the grayscale one
 
-        * **=0**  Return a grayscale image
+        * **>0**  Return a 3-channel color image.
+            .. note:: In the current implementation the alpha channel, if any, is stripped from the output image. Use negative value if you need the alpha channel.
 
-        * **<0**  Return the loaded image as is. Note that in the current implementation the alpha channel, if any, is stripped from the output image. For example, a 4-channel RGBA image is loaded as RGB if  :math:`flags\ge0` .
+        * **=0**  Return a grayscale image.
+
+        * **<0**  Return the loaded image as is (with alpha channel).
 
 The function ``imread`` loads an image from the specified file and returns it. If the image cannot be read (because of missing file, improper permissions, unsupported or invalid format), the function returns an empty matrix ( ``Mat::data==NULL`` ). Currently, the following file formats are supported:
 
@@ -98,6 +111,8 @@ The function ``imread`` loads an image from the specified file and returns it. I
     * On Microsoft Windows* OS and MacOSX*, the codecs shipped with an OpenCV image (libjpeg, libpng, libtiff, and libjasper) are used by default. So, OpenCV can always read JPEGs, PNGs, and TIFFs. On MacOSX, there is also an option to use native MacOSX image readers. But beware that currently these native image loaders give images with different pixel values because of the color management embedded into MacOSX.
 
     * On Linux*, BSD flavors and other Unix-like open-source operating systems, OpenCV looks for codecs supplied with an OS image. Install the relevant packages (do not forget the development files, for example, "libjpeg-dev", in Debian* and Ubuntu*) to get the codec support or turn on the ``OPENCV_BUILD_3RDPARTY_LIBS`` flag in CMake.
+
+.. note:: In the case of color images, the decoded images will have the channels stored in ``B G R`` order.
 
 imwrite
 -----------
@@ -124,7 +139,7 @@ Saves an image to a specified file.
         *  For PPM, PGM, or PBM, it can be a binary format flag ( ``CV_IMWRITE_PXM_BINARY`` ), 0 or 1. Default value is 1.
 
 The function ``imwrite`` saves the image to the specified file. The image format is chosen based on the ``filename`` extension (see
-:ocv:func:`imread` for the list of extensions). Only 8-bit (or 16-bit in case of PNG, JPEG 2000, and TIFF) single-channel or 3-channel (with 'BGR' channel order) images can be saved using this function. If the format, depth or channel order is different, use
+:ocv:func:`imread` for the list of extensions). Only 8-bit (or 16-bit unsigned (``CV_16U``) in case of PNG, JPEG 2000, and TIFF) single-channel or 3-channel (with 'BGR' channel order) images can be saved using this function. If the format, depth or channel order is different, use
 :ocv:func:`Mat::convertTo` , and
 :ocv:func:`cvtColor` to convert it before saving. Or, use the universal XML I/O functions to save the image to XML or YAML format.
 
@@ -294,7 +309,7 @@ The methods/functions grab the next frame from video file or camera and return t
 
 The primary use of the function is in multi-camera environments, especially when the cameras do not have hardware synchronization. That is, you call ``VideoCapture::grab()`` for each camera and after that call the slower method ``VideoCapture::retrieve()`` to decode and get frame from each camera. This way the overhead on demosaicing or motion jpeg decompression etc. is eliminated and the retrieved frames from different cameras will be closer in time.
 
-Also, when a connected camera is multi-head (for example, a stereo camera or a Kinect device), the correct way of retrieving data from it is to call `VideoCapture::grab` first and then call :ocv:func:`VideoCapture::retrieve` one or more times with different values of the ``channel`` parameter. See http://code.opencv.org/svn/opencv/trunk/opencv/samples/cpp/kinect_maps.cpp
+Also, when a connected camera is multi-head (for example, a stereo camera or a Kinect device), the correct way of retrieving data from it is to call `VideoCapture::grab` first and then call :ocv:func:`VideoCapture::retrieve` one or more times with different values of the ``channel`` parameter. See http://code.opencv.org/projects/opencv/repository/revisions/master/entry/samples/cpp/kinect_maps.cpp
 
 
 VideoCapture::retrieve

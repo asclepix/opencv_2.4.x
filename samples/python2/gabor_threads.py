@@ -14,9 +14,8 @@ gabor_threads.py [image filename]
 
 import numpy as np
 import cv2
-from threading import Lock
 from multiprocessing.pool import ThreadPool
-            
+
 
 def build_filters():
     filters = []
@@ -36,33 +35,31 @@ def process(img, filters):
 
 def process_threaded(img, filters, threadn = 8):
     accum = np.zeros_like(img)
-    accum_lock = Lock()
     def f(kern):
-        fimg = cv2.filter2D(img, cv2.CV_8UC3, kern)
-        with accum_lock:
-            np.maximum(accum, fimg, accum)
+        return cv2.filter2D(img, cv2.CV_8UC3, kern)
     pool = ThreadPool(processes=threadn)
-    pool.map(f, filters)
+    for fimg in pool.imap_unordered(f, filters):
+        np.maximum(accum, fimg, accum)
     return accum
 
 if __name__ == '__main__':
     import sys
     from common import Timer
-    
+
     print __doc__
     try: img_fn = sys.argv[1]
     except: img_fn = '../cpp/baboon.jpg'
 
     img = cv2.imread(img_fn)
-    filters = build_filters() 
+    filters = build_filters()
 
     with Timer('running single-threaded'):
         res1 = process(img, filters)
     with Timer('running multi-threaded'):
         res2 = process_threaded(img, filters)
-    
+
     print 'res1 == res2: ', (res1 == res2).all()
     cv2.imshow('img', img)
     cv2.imshow('result', res2)
     cv2.waitKey()
-    cv2.destroyAllWindows() 			
+    cv2.destroyAllWindows()

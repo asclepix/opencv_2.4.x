@@ -13,7 +13,7 @@ typedef perf::TestBaseWithParam<Img_BlockSize_ApertureSize_k_BorderType_t> Img_B
 
 PERF_TEST_P(Img_BlockSize_ApertureSize_k_BorderType, cornerHarris,
             testing::Combine(
-                testing::Values( "stitching/a1.jpg", "cv/shared/pic5.png"),
+                testing::Values( "stitching/a1.png", "cv/shared/pic5.png"),
                 testing::Values( 3, 5 ),
                 testing::Values( 3, 5 ),
                 testing::Values( 0.04, 0.1 ),
@@ -30,7 +30,7 @@ PERF_TEST_P(Img_BlockSize_ApertureSize_k_BorderType, cornerHarris,
     Mat src = imread(filename, IMREAD_GRAYSCALE);
     if (src.empty())
         FAIL() << "Unable to load source image" << filename;
-    
+
     Mat dst;
 
     TEST_CYCLE() cornerHarris(src, dst, blockSize, apertureSize, k, borderType);

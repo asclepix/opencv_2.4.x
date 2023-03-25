@@ -5,6 +5,8 @@
 #include <binder/Parcel.h>
 #include <utils/String16.h>
 
+// OpenCV Manager package name
+#define OPENCV_ENGINE_PACKAGE "org.opencv.engine"
 // Class name of OpenCV engine binder object. Is needned for connection to service
 #define OPECV_ENGINE_CLASSNAME "org.opencv.engine.OpenCVEngineInterface"
 
@@ -21,14 +23,14 @@ using namespace android;
 class IOpenCVEngine: public android::IInterface
 {
 public:
-       
+
     DECLARE_META_INTERFACE(OpenCVEngine)
 
 public:
     virtual int GetVersion() = 0;
     virtual android::String16 GetLibPathByVersion(android::String16 version) = 0;
     virtual android::String16 GetLibraryList(android::String16 version) = 0;
-    virtual bool InstallVersion(android::String16 version) = 0; 
+    virtual bool InstallVersion(android::String16 version) = 0;
 };
 
 #endif

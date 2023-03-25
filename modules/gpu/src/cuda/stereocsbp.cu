@@ -40,6 +40,8 @@
 //
 //M*/
 
+#if !defined CUDA_DISABLER
+
 #include "internal_shared.hpp"
 #include "opencv2/gpu/device/saturate_cast.hpp"
 #include "opencv2/gpu/device/limits.hpp"
@@ -72,7 +74,7 @@ namespace cv { namespace gpu { namespace device
 
 
         void load_constants(int ndisp, float max_data_term, float data_weight, float max_disc_term, float disc_single_jump, int min_disp_th,
-                            const DevMem2Db& left, const DevMem2Db& right, const DevMem2Db& temp)
+                            const PtrStepSzb& left, const PtrStepSzb& right, const PtrStepSzb& temp)
         {
             cudaSafeCall( cudaMemcpyToSymbol(cndisp, &ndisp, sizeof(int)) );
 
@@ -304,7 +306,7 @@ namespace cv { namespace gpu { namespace device
                 if (winsz >= 256) { if (tid < 128) { dline[tid] += dline[tid + 128]; } __syncthreads(); }
                 if (winsz >= 128) { if (tid <  64) { dline[tid] += dline[tid + 64]; } __syncthreads(); }
 
-		        volatile float* vdline = smem + winsz * threadIdx.z;
+                volatile float* vdline = smem + winsz * threadIdx.z;
 
                 if (winsz >= 64) if (tid < 32) vdline[tid] += vdline[tid + 32];
                 if (winsz >= 32) if (tid < 16) vdline[tid] += vdline[tid + 16];
@@ -503,7 +505,7 @@ namespace cv { namespace gpu { namespace device
                 if (winsz >= 256) { if (tid < 128) { dline[tid] += dline[tid + 128]; } __syncthreads(); }
                 if (winsz >= 128) { if (tid <  64) { dline[tid] += dline[tid +  64]; } __syncthreads(); }
 
-		        volatile float* vdline = smem + winsz * threadIdx.z;
+                volatile float* vdline = smem + winsz * threadIdx.z;
 
                 if (winsz >= 64) if (tid < 32) vdline[tid] += vdline[tid + 32];
                 if (winsz >= 32) if (tid < 16) vdline[tid] += vdline[tid + 16];
@@ -807,7 +809,7 @@ namespace cv { namespace gpu { namespace device
                 compute_message<<<grid, threads, 0, stream>>>(u, d, l, r, data_cost_selected, selected_disp_pyr_cur, h, w, nr_plane, t & 1);
                 cudaSafeCall( cudaGetLastError() );
             }
-			if (stream == 0)
+            if (stream == 0)
                     cudaSafeCall( cudaDeviceSynchronize() );
         };
 
@@ -854,13 +856,13 @@ namespace cv { namespace gpu { namespace device
                         best = saturate_cast<short>(disp_selected[idx]);
                     }
                 }
-				disp(y, x) = best;
+                disp(y, x) = best;
             }
         }
 
         template<class T>
         void compute_disp(const T* u, const T* d, const T* l, const T* r, const T* data_cost_selected, const T* disp_selected, size_t msg_step,
-            const DevMem2D_<short>& disp, int nr_plane, cudaStream_t stream)
+            const PtrStepSz<short>& disp, int nr_plane, cudaStream_t stream)
         {
             size_t disp_step = disp.rows * msg_step;
             cudaSafeCall( cudaMemcpyToSymbol(cdisp_step1, &disp_step, sizeof(size_t)) );
@@ -880,9 +882,11 @@ namespace cv { namespace gpu { namespace device
         }
 
         template void compute_disp(const short* u, const short* d, const short* l, const short* r, const short* data_cost_selected, const short* disp_selected, size_t msg_step,
-            const DevMem2D_<short>& disp, int nr_plane, cudaStream_t stream);
+            const PtrStepSz<short>& disp, int nr_plane, cudaStream_t stream);
 
         template void compute_disp(const float* u, const float* d, const float* l, const float* r, const float* data_cost_selected, const float* disp_selected, size_t msg_step,
-            const DevMem2D_<short>& disp, int nr_plane, cudaStream_t stream);
+            const PtrStepSz<short>& disp, int nr_plane, cudaStream_t stream);
     } // namespace stereocsbp
 }}} // namespace cv { namespace gpu { namespace device {
+
+#endif /* CUDA_DISABLER */

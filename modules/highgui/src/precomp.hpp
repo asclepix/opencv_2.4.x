@@ -49,17 +49,20 @@
 #include "opencv2/imgproc/imgproc_c.h"
 #include "opencv2/core/internal.hpp"
 
-#if defined WIN32 || defined _WIN32
-//required windows.h has to be included by the opencv2/core/internal.hpp
-void  FillBitmapInfo( BITMAPINFO* bmi, int width, int height, int bpp, int origin );
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
 #include <assert.h>
+
+#if defined WIN32 || defined WINCE
+    #include <windows.h>
+    #undef small
+    #undef min
+    #undef max
+    #undef abs
+#endif
 
 #ifdef HAVE_TEGRA_OPTIMIZATION
 #include "opencv2/highgui/highgui_tegra.hpp"
@@ -112,6 +115,7 @@ CvCapture * cvCreateCameraCapture_V4L( int index );
 CvCapture * cvCreateCameraCapture_DC1394( int index );
 CvCapture * cvCreateCameraCapture_DC1394_2( int index );
 CvCapture* cvCreateCameraCapture_MIL( int index );
+CvCapture* cvCreateCameraCapture_Giganetix( int index );
 CvCapture * cvCreateCameraCapture_CMU( int index );
 CV_IMPL CvCapture * cvCreateCameraCapture_TYZX( int index );
 CvCapture* cvCreateFileCapture_Win32( const char* filename );

@@ -106,7 +106,7 @@ static const char* trackbar_text =
 
 #endif
 
-void FillBitmapInfo( BITMAPINFO* bmi, int width, int height, int bpp, int origin )
+static void FillBitmapInfo( BITMAPINFO* bmi, int width, int height, int bpp, int origin )
 {
     assert( bmi && width >= 0 && height >= 0 && (bpp == 8 || bpp == 24 || bpp == 32));
 
@@ -2296,7 +2296,8 @@ icvCreateTrackbar( const char* trackbar_name, const char* window_name,
     trackbar->maxval = count;
 
     /* Adjust slider parameters */
-    SendMessage(trackbar->hwnd, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, count));
+    SendMessage(trackbar->hwnd, TBM_SETRANGEMIN, (WPARAM)TRUE, (LPARAM)0);
+    SendMessage(trackbar->hwnd, TBM_SETRANGEMAX, (WPARAM)TRUE, (LPARAM)count);
     SendMessage(trackbar->hwnd, TBM_SETTICFREQ, (WPARAM)1, (LPARAM)0 );
     if( val )
         pos = *val;

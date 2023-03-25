@@ -1,26 +1,28 @@
 /*
  * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
  *
- * NVIDIA Corporation and its licensors retain all intellectual 
- * property and proprietary rights in and to this software and 
- * related documentation and any modifications thereto.  
- * Any use, reproduction, disclosure, or distribution of this 
- * software and related documentation without an express license 
+ * NVIDIA Corporation and its licensors retain all intellectual
+ * property and proprietary rights in and to this software and
+ * related documentation and any modifications thereto.
+ * Any use, reproduction, disclosure, or distribution of this
+ * software and related documentation without an express license
  * agreement from NVIDIA Corporation is strictly prohibited.
  */
+
+#if !defined CUDA_DISABLER
 
 #include <math.h>
 #include "TestIntegralImage.h"
 
 
 template <class T_in, class T_out>
-TestIntegralImage<T_in, T_out>::TestIntegralImage(std::string testName, NCVTestSourceProvider<T_in> &src,
-                                                  Ncv32u width, Ncv32u height)
+TestIntegralImage<T_in, T_out>::TestIntegralImage(std::string testName_, NCVTestSourceProvider<T_in> &src_,
+                                                  Ncv32u width_, Ncv32u height_)
     :
-    NCVTestProvider(testName),
-    src(src),
-    width(width),
-    height(height)
+    NCVTestProvider(testName_),
+    src(src_),
+    width(width_),
+    height(height_)
 {
 }
 
@@ -183,3 +185,5 @@ bool TestIntegralImage<T_in, T_out>::deinit()
 
 template class TestIntegralImage<Ncv8u, Ncv32u>;
 template class TestIntegralImage<Ncv32f, Ncv32f>;
+
+#endif /* CUDA_DISABLER */

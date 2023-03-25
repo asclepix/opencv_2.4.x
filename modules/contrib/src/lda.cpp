@@ -47,8 +47,8 @@ static Mat argsort(InputArray _src, bool ascending=true)
 {
     Mat src = _src.getMat();
     if (src.rows != 1 && src.cols != 1) {
-    	string error_message = "Wrong shape of input matrix! Expected a matrix with one row or column.";
-    	CV_Error(CV_StsBadArg, error_message);
+        string error_message = "Wrong shape of input matrix! Expected a matrix with one row or column.";
+        CV_Error(CV_StsBadArg, error_message);
     }
     int flags = CV_SORT_EVERY_ROW+(ascending ? CV_SORT_ASCENDING : CV_SORT_DESCENDING);
     Mat sorted_indices;
@@ -59,7 +59,7 @@ static Mat argsort(InputArray _src, bool ascending=true)
 static Mat asRowMatrix(InputArrayOfArrays src, int rtype, double alpha=1, double beta=0) {
     // make sure the input data is a vector of matrices or vector of vector
     if(src.kind() != _InputArray::STD_VECTOR_MAT && src.kind() != _InputArray::STD_VECTOR_VECTOR) {
-    	string error_message = "The data is expected as InputArray::STD_VECTOR_MAT (a std::vector<Mat>) or _InputArray::STD_VECTOR_VECTOR (a std::vector< vector<...> >).";
+        string error_message = "The data is expected as InputArray::STD_VECTOR_MAT (a std::vector<Mat>) or _InputArray::STD_VECTOR_VECTOR (a std::vector< vector<...> >).";
         CV_Error(CV_StsBadArg, error_message);
     }
     // number of samples
@@ -197,10 +197,10 @@ Mat subspaceProject(InputArray _W, InputArray _mean, InputArray _src) {
     src.convertTo(X, W.type());
     // safe to do, because of above assertion
     if(!mean.empty()) {
-    	for(int i=0; i<n; i++) {
-    		Mat r_i = X.row(i);
-    		subtract(r_i, mean.reshape(1,1), r_i);
-    	}
+        for(int i=0; i<n; i++) {
+            Mat r_i = X.row(i);
+            subtract(r_i, mean.reshape(1,1), r_i);
+        }
     }
     // finally calculate projection as Y = (X-mean)*W
     gemm(X, W, 1.0, Mat(), 0.0, Y);
@@ -237,10 +237,10 @@ Mat subspaceReconstruct(InputArray _W, InputArray _mean, InputArray _src)
     gemm(Y, W, 1.0, Mat(), 0.0, X, GEMM_2_T);
     // safe to do because of above assertion
     if(!mean.empty()) {
-    	for(int i=0; i<n; i++) {
-    		Mat r_i = X.row(i);
-    		add(r_i, mean.reshape(1,1), r_i);
-    	}
+        for(int i=0; i<n; i++) {
+            Mat r_i = X.row(i);
+            add(r_i, mean.reshape(1,1), r_i);
+        }
     }
     return X;
 }
@@ -975,10 +975,17 @@ void LDA::load(const FileStorage& fs) {
     fs["eigenvectors"] >> _eigenvectors;
 }
 
-void LDA::lda(InputArray _src, InputArray _lbls) {
+void LDA::lda(InputArrayOfArrays _src, InputArray _lbls) {
     // get data
     Mat src = _src.getMat();
-    vector<int> labels = _lbls.getMat();
+    vector<int> labels;
+    // safely copy the labels
+    {
+        Mat tmp = _lbls.getMat();
+        for(unsigned int i = 0; i < tmp.total(); i++) {
+            labels.push_back(tmp.at<int>(i));
+        }
+    }
     // turn into row sampled matrix
     Mat data;
     // ensure working matrix is double precision
@@ -1010,7 +1017,7 @@ void LDA::lda(InputArray _src, InputArray _lbls) {
     // warn if within-classes scatter matrix becomes singular
     if (N < D) {
         cout << "Warning: Less observations than feature dimension given!"
-        	 << "Computation will probably fail."
+             << "Computation will probably fail."
              << endl;
     }
     // clip number of components to be a valid number
@@ -1078,7 +1085,7 @@ void LDA::lda(InputArray _src, InputArray _lbls) {
     _eigenvectors = Mat(_eigenvectors, Range::all(), Range(0, _num_components));
 }
 
-void LDA::compute(InputArray _src, InputArray _lbls) {
+void LDA::compute(InputArrayOfArrays _src, InputArray _lbls) {
     switch(_src.kind()) {
     case _InputArray::STD_VECTOR_MAT:
         lda(asRowMatrix(_src, CV_64FC1), _lbls);
@@ -1087,7 +1094,7 @@ void LDA::compute(InputArray _src, InputArray _lbls) {
         lda(_src.getMat(), _lbls);
         break;
     default:
-    	string error_message= format("InputArray Datatype %d is not supported.", _src.kind());
+        string error_message= format("InputArray Datatype %d is not supported.", _src.kind());
         CV_Error(CV_StsBadArg, error_message);
         break;
     }

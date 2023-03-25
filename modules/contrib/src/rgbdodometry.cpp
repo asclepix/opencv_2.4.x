@@ -40,6 +40,8 @@
 //
 //M*/
 
+#include "precomp.hpp"
+
 #define SHOW_DEBUG_IMAGES 0
 
 #include "opencv2/core/core.hpp"
@@ -49,20 +51,20 @@
 #  include "opencv2/highgui/highgui.hpp"
 #endif
 
-#include "precomp.hpp"
-
 #include <iostream>
+#include <limits>
 
+#include "opencv2/core/internal.hpp"
 #if defined(HAVE_EIGEN) && EIGEN_WORLD_VERSION == 3
-#  include <Eigen/Core>
 #  ifdef ANDROID
      template <typename Scalar> Scalar log2(Scalar v) { using std::log; return log(v)/log(Scalar(2)); }
+#  endif
+#  if defined __GNUC__ && defined __APPLE__
+#    pragma GCC diagnostic ignored "-Wshadow"
 #  endif
 #  include <unsupported/Eigen/MatrixFunctions>
 #  include <Eigen/Dense>
 #endif
-
-#include <limits>
 
 using namespace cv;
 
@@ -367,17 +369,17 @@ bool solveSystem( const Mat& C, const Mat& dI_dt, double detThreshold, Mat& ksi 
     eCt = eC.transpose();
 
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> A, B, eksi;
-	
-	A = eCt * eC;
-	double det = A.determinant();
+
+    A = eCt * eC;
+    double det = A.determinant();
     if( fabs (det) < detThreshold || cvIsNaN(det) || cvIsInf(det) )
         return false;
-        
+
     B = -eCt * edI_dt;
 
     eksi = A.ldlt().solve(B);
     eigen2cv( eksi, ksi );
-    
+
 #else
     Mat A = C.t() * C;
 

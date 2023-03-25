@@ -69,12 +69,14 @@ protected:
 
     bool SomeMatFunctions();
     bool TestMat();
+    template<typename _Tp> void TestType(Size sz, _Tp value);
     bool TestTemplateMat();
     bool TestMatND();
     bool TestSparseMat();
     bool TestVec();
     bool TestMatxMultiplication();
     bool TestSubMatAccess();
+    bool TestExp();
     bool TestSVD();
     bool operations1();
 
@@ -106,6 +108,22 @@ CV_OperationsTest::~CV_OperationsTest() {}
 #define MSVC_OLD 0
 #endif
 
+template<typename _Tp> void CV_OperationsTest::TestType(Size sz, _Tp value)
+{
+    cv::Mat_<_Tp> m(sz);
+    CV_Assert(m.cols == sz.width && m.rows == sz.height && m.depth() == DataType<_Tp>::depth &&
+              m.channels() == DataType<_Tp>::channels &&
+              m.elemSize() == sizeof(_Tp) && m.step == m.elemSize()*m.cols);
+    for( int y = 0; y < sz.height; y++ )
+        for( int x = 0; x < sz.width; x++ )
+        {
+            m(y,x) = value;
+        }
+
+    double s = sum(Mat(m).reshape(1))[0];
+    CV_Assert( s == (double)sz.width*sz.height );
+}
+
 bool CV_OperationsTest::TestMat()
 {
     try
@@ -118,7 +136,7 @@ bool CV_OperationsTest::TestMat()
         float data[] = { sqrt(2.f)/2, -sqrt(2.f)/2, 1.f, sqrt(2.f)/2, sqrt(2.f)/2, 10.f };
         Mat rot_2x3(2, 3, CV_32F, data);
 
-                Mat res = one_3x1 + shi_3x1 + shi_3x1 + shi_3x1;
+        Mat res = one_3x1 + shi_3x1 + shi_3x1 + shi_3x1;
         res = Mat(Mat(2 * rot_2x3) * res - shi_2x1) + shift;
 
         Mat tmp, res2;
@@ -751,12 +769,45 @@ bool CV_OperationsTest::TestTemplateMat()
         if (Mat3w(1, 1).channels() != 3) throw test_excep();
         if (Mat3s(1, 1).channels() != 3) throw test_excep();
 
+        vector<Mat_<float> > mvf, mvf2;
+        Mat_<Vec2f> mf2;
+        mvf.push_back(Mat_<float>::ones(4, 3));
+        mvf.push_back(Mat_<float>::zeros(4, 3));
+        merge(mvf, mf2);
+        split(mf2, mvf2);
+        CV_Assert( norm(mvf2[0], mvf[0], CV_C) == 0 &&
+                  norm(mvf2[1], mvf[1], CV_C) == 0 );
+
         {
-            Mat a(2,2,CV_32F,1.f);
-            Mat b(1,2,CV_32F,1.f);
-            Mat c = (a*b.t()).t();
-            CV_Assert( norm(c, CV_L1) == 4. );
+        Mat a(2,2,CV_32F,1.f);
+        Mat b(1,2,CV_32F,1.f);
+        Mat c = (a*b.t()).t();
+        CV_Assert( norm(c, CV_L1) == 4. );
         }
+
+        bool badarg_catched = false;
+        try
+        {
+            Mat m1 = Mat::zeros(1, 10, CV_8UC1);
+            Mat m2 = Mat::zeros(10, 10, CV_8UC3);
+            m1.copyTo(m2.row(1));
+        }
+        catch(const Exception&)
+        {
+            badarg_catched = true;
+        }
+        CV_Assert( badarg_catched );
+
+        Size size(2, 5);
+        TestType<float>(size, 1.f);
+        cv::Vec3f val1 = 1.f;
+        TestType<cv::Vec3f>(size, val1);
+        cv::Matx31f val2 = 1.f;
+        TestType<cv::Matx31f>(size, val2);
+        cv::Matx41f val3 = 1.f;
+        TestType<cv::Matx41f>(size, val3);
+        cv::Matx32f val4 = 1.f;
+        TestType<cv::Matx32f>(size, val4);
     }
     catch (const test_excep& e)
     {
@@ -917,31 +968,53 @@ bool CV_OperationsTest::operations1()
             if (!v10dzero[ii] == 0.0)
                 throw test_excep();
         }
-        
+
         Mat A(1, 32, CV_32F), B;
         for( int i = 0; i < A.cols; i++ )
             A.at<float>(i) = (float)(i <= 12 ? i : 24 - i);
         transpose(A, B);
-        
+
         int minidx[2] = {0, 0}, maxidx[2] = {0, 0};
         double minval = 0, maxval = 0;
         minMaxIdx(A, &minval, &maxval, minidx, maxidx);
-        
+
         if( !(minidx[0] == 0 && minidx[1] == 31 && maxidx[0] == 0 && maxidx[1] == 12 &&
                   minval == -7 && maxval == 12))
             throw test_excep();
-        
+
         minMaxIdx(B, &minval, &maxval, minidx, maxidx);
-        
+
         if( !(minidx[0] == 31 && minidx[1] == 0 && maxidx[0] == 12 && maxidx[1] == 0 &&
               minval == -7 && maxval == 12))
             throw test_excep();
+
+        Matx33f b(1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f, 9.f);
+        Mat c;
+        add(Mat::zeros(3, 3, CV_32F), b, c);
+        CV_Assert( norm(b, c, CV_C) == 0 );
+
+        add(Mat::zeros(3, 3, CV_64F), b, c, noArray(), c.type());
+        CV_Assert( norm(b, c, CV_C) == 0 );
+
+        add(Mat::zeros(6, 1, CV_64F), 1, c, noArray(), c.type());
+        CV_Assert( norm(Matx61f(1.f, 1.f, 1.f, 1.f, 1.f, 1.f), c, CV_C) == 0 );
     }
     catch(const test_excep&)
     {
         ts->set_failed_test_info(cvtest::TS::FAIL_MISMATCH);
         return false;
     }
+    return true;
+}
+
+
+bool CV_OperationsTest::TestExp()
+{
+    Mat1f tt = Mat1f::ones(4,2);
+    Mat1f outs;
+    exp(-tt, outs);
+    Mat1f tt2 = Mat1f::ones(4,1), outs2;
+    exp(-tt2, outs2);
     return true;
 }
 
@@ -959,20 +1032,20 @@ bool CV_OperationsTest::TestSVD()
         SVD svd(A, SVD::FULL_UV);
         if( norm(A*svd.vt.row(3).t(), CV_C) > FLT_EPSILON )
             throw test_excep();
-        
+
         Mat Dp(3,3,CV_32FC1);
         Mat Dc(3,3,CV_32FC1);
         Mat Q(3,3,CV_32FC1);
         Mat U,Vt,R,T,W;
-        
+
         Dp.at<float>(0,0)=0.86483884f; Dp.at<float>(0,1)= -0.3077251f; Dp.at<float>(0,2)=-0.55711365f;
         Dp.at<float>(1,0)=0.49294353f; Dp.at<float>(1,1)=-0.24209651f; Dp.at<float>(1,2)=-0.25084701f;
         Dp.at<float>(2,0)=0;           Dp.at<float>(2,1)=0;            Dp.at<float>(2,2)=0;
-        
+
         Dc.at<float>(0,0)=0.75632739f; Dc.at<float>(0,1)= -0.38859656f; Dc.at<float>(0,2)=-0.36773083f;
         Dc.at<float>(1,0)=0.9699229f;  Dc.at<float>(1,1)=-0.49858192f;  Dc.at<float>(1,2)=-0.47134098f;
         Dc.at<float>(2,0)=0.10566688f; Dc.at<float>(2,1)=-0.060333252f; Dc.at<float>(2,2)=-0.045333147f;
-        
+
         Q=Dp*Dc.t();
         SVD decomp;
         decomp=SVD(Q);
@@ -980,7 +1053,7 @@ bool CV_OperationsTest::TestSVD()
         Vt=decomp.vt;
         W=decomp.w;
         Mat I = Mat::eye(3, 3, CV_32F);
-        
+
         if( norm(U*U.t(), I, CV_C) > FLT_EPSILON ||
             norm(Vt*Vt.t(), I, CV_C) > FLT_EPSILON ||
             W.at<float>(2) < 0 || W.at<float>(1) < W.at<float>(2) ||
@@ -1020,6 +1093,9 @@ void CV_OperationsTest::run( int /* start_from */)
         return;
 
     if (!TestSubMatAccess())
+        return;
+
+    if (!TestExp())
         return;
 
     if (!TestSVD())

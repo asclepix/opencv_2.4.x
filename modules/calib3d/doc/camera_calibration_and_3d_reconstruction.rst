@@ -407,11 +407,11 @@ Decomposes a projection matrix into a rotation matrix and a camera matrix.
 
     :param rotMatrZ: Optional 3x3 rotation matrix around z-axis.
 
-    :param eulerAngles: Optional three-element vector containing three Euler angles of rotation.
+    :param eulerAngles: Optional three-element vector containing three Euler angles of rotation in degrees.
 
 The function computes a decomposition of a projection matrix into a calibration and a rotation matrix and the position of a camera.
 
-It optionally returns three rotation matrices, one for each axis, and three Euler angles that could be used in OpenGL.
+It optionally returns three rotation matrices, one for each axis, and three Euler angles that could be used in OpenGL. Note, there is always more than one sequence of rotations about the three principle axes that results in the same orientation of an object, eg. see [Slabaugh]_. Returned tree rotation matrices and corresponding three Euler angules are only one of the possible solutions.
 
 The function is based on
 :ocv:func:`RQDecomp3x3` .
@@ -502,27 +502,27 @@ Sample usage of detecting and drawing chessboard corners: ::
 
 findCirclesGrid
 -------------------
-Finds the centers in the grid of circles.
+Finds centers in the grid of circles.
 
 .. ocv:function:: bool findCirclesGrid( InputArray image, Size patternSize, OutputArray centers, int flags=CALIB_CB_SYMMETRIC_GRID, const Ptr<FeatureDetector> &blobDetector = new SimpleBlobDetector() )
 
 .. ocv:pyfunction:: cv2.findCirclesGridDefault(image, patternSize[, centers[, flags]]) -> retval, centers
 
-    :param image: Grid view of source circles. It must be an 8-bit grayscale or color image.
+    :param image: grid view of input circles; it must be an 8-bit grayscale or color image.
 
-    :param patternSize: Number of circles per a grid row and column ``( patternSize = Size(points_per_row, points_per_colum) )`` .
+    :param patternSize: number of circles per row and column ``( patternSize = Size(points_per_row, points_per_colum) )``.
 
-    :param centers: Output array of detected centers.
+    :param centers: output array of detected centers.
 
-    :param flags: Various operation flags that can be one of the following values:
+    :param flags: various operation flags that can be one of the following values:
 
-            * **CALIB_CB_SYMMETRIC_GRID** Use symmetric pattern of circles.
+            * **CALIB_CB_SYMMETRIC_GRID** uses symmetric pattern of circles.
 
-            * **CALIB_CB_ASYMMETRIC_GRID** Use asymmetric pattern of circles.
+            * **CALIB_CB_ASYMMETRIC_GRID** uses asymmetric pattern of circles.
 
-            * **CALIB_CB_CLUSTERING** Use a special algorithm for grid detection. It is more robust to perspective distortions but much more sensitive to background clutter.
+            * **CALIB_CB_CLUSTERING** uses a special algorithm for grid detection. It is more robust to perspective distortions but much more sensitive to background clutter.
 
-    :param blobDetector: FeatureDetector that finds blobs like dark circles on light background
+    :param blobDetector: feature detector that finds blobs like dark circles on light background.
 
 
 The function attempts to determine
@@ -999,9 +999,7 @@ Computes an RQ decomposition of 3x3 matrices.
 The function computes a RQ decomposition using the given rotations. This function is used in
 :ocv:func:`decomposeProjectionMatrix` to decompose the left 3x3 submatrix of a projection matrix into a camera and a rotation matrix.
 
-It optionally returns three rotation matrices, one for each axis, and the three Euler angles
-(as the return value)
-that could be used in OpenGL.
+It optionally returns three rotation matrices, one for each axis, and the three Euler angles in degrees (as the return value) that could be used in OpenGL. Note, there is always more than one sequence of rotations about the three principle axes that results in the same orientation of an object, eg. see [Slabaugh]_. Returned tree rotation matrices and corresponding three Euler angules are only one of the possible solutions.
 
 
 
@@ -1458,9 +1456,9 @@ Reconstructs points by triangulation.
 
     :param projMatr2: 3x4 projection matrix of the second camera.
 
-    :param projPoints1: 2xN array of feature points in the first image.
+    :param projPoints1: 2xN array of feature points in the first image. In case of c++ version it can be also a vector of feature points or two-channel matrix of size 1xN or Nx1.
 
-    :param projPoints2: 2xN array of corresponding points in the second image.
+    :param projPoints2: 2xN array of corresponding points in the second image. In case of c++ version it can be also a vector of feature points or two-channel matrix of size 1xN or Nx1.
 
     :param points4D: 4xN array of reconstructed points in homogeneous coordinates.
 
@@ -1478,5 +1476,7 @@ The function reconstructs 3-dimensional points (in homogeneous coordinates) by u
 .. [Hartley99] Hartley, R.I., Theory and Practice of Projective Rectification. IJCV 35 2, pp 115-127 (1999)
 
 .. [HH08] Hirschmuller, H. Stereo Processing by Semiglobal Matching and Mutual Information, PAMI(30), No. 2, February 2008, pp. 328-341.
+
+.. [Slabaugh] Slabaugh, G.G. Computing Euler angles from a rotation matrix. http://gregslabaugh.name/publications/euler.pdf
 
 .. [Zhang2000] Z. Zhang. A Flexible New Technique for Camera Calibration. IEEE Transactions on Pattern Analysis and Machine Intelligence, 22(11):1330-1334, 2000.

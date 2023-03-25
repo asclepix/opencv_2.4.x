@@ -3,109 +3,130 @@ package org.opencv.samples.tutorial2;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener;
+import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
+import android.view.WindowManager;
 
-public class Sample2NativeCamera extends Activity {
-    private static final String TAG             = "Sample::Activity";
+public class Sample2NativeCamera extends Activity implements CvCameraViewListener {
+    private static final String  TAG             = "OCVSample::Activity";
 
-    public static final int     VIEW_MODE_RGBA  = 0;
-    public static final int     VIEW_MODE_GRAY  = 1;
-    public static final int     VIEW_MODE_CANNY = 2;
+    public static final int      VIEW_MODE_RGBA  = 0;
+    public static final int      VIEW_MODE_GRAY  = 1;
+    public static final int      VIEW_MODE_CANNY = 2;
 
-    private MenuItem            mItemPreviewRGBA;
-    private MenuItem            mItemPreviewGray;
-    private MenuItem            mItemPreviewCanny;
+    private static int           viewMode       = VIEW_MODE_RGBA;
+    private MenuItem             mItemPreviewRGBA;
+    private MenuItem             mItemPreviewGray;
+    private MenuItem             mItemPreviewCanny;
+    private Mat                  mRgba;
+    private Mat                  mIntermediateMat;
 
-    public static int           viewMode        = VIEW_MODE_RGBA;
-    
-    private Sample2View 		mView;
+    private CameraBridgeViewBase mOpenCvCameraView;
 
-    private BaseLoaderCallback  mOpenCVCallBack = new BaseLoaderCallback(this) {
-    	@Override
-    	public void onManagerConnected(int status) {
-    		switch (status) {
-				case LoaderCallbackInterface.SUCCESS:
-				{
-					Log.i(TAG, "OpenCV loaded successfully");
-					// Create and set View
-					mView = new Sample2View(mAppContext);
-					setContentView(mView);
-					// Check native OpenCV camera
-					if( !mView.openCamera() ) {
-						AlertDialog ad = new AlertDialog.Builder(mAppContext).create();
-						ad.setCancelable(false); // This blocks the 'BACK' button
-						ad.setMessage("Fatal error: can't open camera!");
-						ad.setButton("OK", new DialogInterface.OnClickListener() {
-						    public void onClick(DialogInterface dialog, int which) {
-							dialog.dismiss();
-							finish();
-						    }
-						});
-						ad.show();
-					}
-				} break;
-				default:
-				{
-					super.onManagerConnected(status);
-				} break;
-			}
-    	}
-	};
-    
+    private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    mOpenCvCameraView.enableView();
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
+
     public Sample2NativeCamera() {
         Log.i(TAG, "Instantiated new " + this.getClass());
     }
 
-    @Override
-	protected void onPause() {
-        Log.i(TAG, "onPause");
-		super.onPause();
-		if (null != mView)
-			mView.releaseCamera();
-	}
-
-	@Override
-	protected void onResume() {
-        Log.i(TAG, "onResume");
-		super.onResume();
-		if((null != mView) && !mView.openCamera() ) {
-			AlertDialog ad = new AlertDialog.Builder(this).create();  
-			ad.setCancelable(false); // This blocks the 'BACK' button  
-			ad.setMessage("Fatal error: can't open camera!");  
-			ad.setButton("OK", new DialogInterface.OnClickListener() {  
-			    public void onClick(DialogInterface dialog, int which) {  
-			        dialog.dismiss();
-					finish();
-			    }  
-			});  
-			ad.show();
-		}
-	}
-
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Log.i(TAG, "onCreate");
+        Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        Log.i(TAG, "Trying to load OpenCV library");
-        if (!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_2, this, mOpenCVCallBack))
-        {
-        	Log.e(TAG, "Cannot connect to OpenCV Manager");
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        setContentView(R.layout.tutorial2_surface_view);
+
+        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.tutorial2_activity_surface_view);
+        mOpenCvCameraView.setCvCameraViewListener(this);
+    }
+
+    @Override
+    public void onPause()
+    {
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+        super.onPause();
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_3, this, mLoaderCallback);
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
+
+    public void onCameraViewStarted(int width, int height) {
+        mRgba = new Mat(height, width, CvType.CV_8UC4);
+        mIntermediateMat = new Mat(height, width, CvType.CV_8UC4);
+    }
+
+    public void onCameraViewStopped() {
+        mRgba.release();
+        mIntermediateMat.release();
+    }
+
+    public Mat onCameraFrame(Mat inputFrame) {
+        switch (Sample2NativeCamera.viewMode) {
+            case Sample2NativeCamera.VIEW_MODE_GRAY:
+            {
+                Imgproc.cvtColor(inputFrame, mRgba, Imgproc.COLOR_GRAY2RGBA, 4);
+            } break;
+            case Sample2NativeCamera.VIEW_MODE_RGBA:
+            {
+                inputFrame.copyTo(mRgba);
+                Core.putText(mRgba, "OpenCV+Android", new Point(10, 50), 3, 1, new Scalar(255, 0, 0, 255), 2);
+            } break;
+            case Sample2NativeCamera.VIEW_MODE_CANNY:
+            {
+                Imgproc.Canny(inputFrame, mIntermediateMat, 80, 100);
+                Imgproc.cvtColor(mIntermediateMat, mRgba, Imgproc.COLOR_GRAY2BGRA, 4);
+            } break;
         }
+
+        return mRgba;
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        Log.i(TAG, "onCreateOptionsMenu");
+        Log.i(TAG, "called onCreateOptionsMenu");
         mItemPreviewRGBA = menu.add("Preview RGBA");
         mItemPreviewGray = menu.add("Preview GRAY");
         mItemPreviewCanny = menu.add("Canny");
@@ -114,13 +135,23 @@ public class Sample2NativeCamera extends Activity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        Log.i(TAG, "Menu Item selected " + item);
+        Log.i(TAG, "called onOptionsItemSelected; selected item: " + item);
         if (item == mItemPreviewRGBA)
+        {
+            mOpenCvCameraView.SetCaptureFormat(Highgui.CV_CAP_ANDROID_COLOR_FRAME_RGBA);
             viewMode = VIEW_MODE_RGBA;
+        }
         else if (item == mItemPreviewGray)
+        {
+            mOpenCvCameraView.SetCaptureFormat(Highgui.CV_CAP_ANDROID_GREY_FRAME);
             viewMode = VIEW_MODE_GRAY;
+        }
         else if (item == mItemPreviewCanny)
+        {
+            mOpenCvCameraView.SetCaptureFormat(Highgui.CV_CAP_ANDROID_GREY_FRAME);
             viewMode = VIEW_MODE_CANNY;
+        }
+
         return true;
     }
 }

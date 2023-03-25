@@ -1,5 +1,9 @@
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Wmissing-declarations"
+#  ifdef __clang__
+#    pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#    pragma GCC diagnostic ignored "-Wextra"
+#  endif
 #endif
 
 #ifndef __OPENCV_TEST_PRECOMP_HPP__
@@ -9,6 +13,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/imgproc/imgproc_c.h"
 #include "opencv2/video/tracking.hpp"
+#include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <iostream>
 

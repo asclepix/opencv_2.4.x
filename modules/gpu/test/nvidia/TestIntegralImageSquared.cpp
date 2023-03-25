@@ -1,24 +1,26 @@
 /*
  * Copyright 1993-2010 NVIDIA Corporation.  All rights reserved.
  *
- * NVIDIA Corporation and its licensors retain all intellectual 
- * property and proprietary rights in and to this software and 
- * related documentation and any modifications thereto.  
- * Any use, reproduction, disclosure, or distribution of this 
- * software and related documentation without an express license 
+ * NVIDIA Corporation and its licensors retain all intellectual
+ * property and proprietary rights in and to this software and
+ * related documentation and any modifications thereto.
+ * Any use, reproduction, disclosure, or distribution of this
+ * software and related documentation without an express license
  * agreement from NVIDIA Corporation is strictly prohibited.
  */
+
+#if !defined CUDA_DISABLER
 
 #include "TestIntegralImageSquared.h"
 
 
-TestIntegralImageSquared::TestIntegralImageSquared(std::string testName, NCVTestSourceProvider<Ncv8u> &src,
-                                                   Ncv32u width, Ncv32u height)
+TestIntegralImageSquared::TestIntegralImageSquared(std::string testName_, NCVTestSourceProvider<Ncv8u> &src_,
+                                                   Ncv32u width_, Ncv32u height_)
     :
-    NCVTestProvider(testName),
-    src(src),
-    width(width),
-    height(height)
+    NCVTestProvider(testName_),
+    src(src_),
+    width(width_),
+    height(height_)
 {
 }
 
@@ -115,3 +117,5 @@ bool TestIntegralImageSquared::deinit()
 {
     return true;
 }
+
+#endif /* CUDA_DISABLER */

@@ -44,6 +44,14 @@
 
 #ifdef HAVE_OPENEXR
 
+#if defined _MSC_VER && _MSC_VER >= 1200
+#  pragma warning( disable: 4100 4244 4267 )
+#endif
+
+#if defined __GNUC__ && defined __APPLE__
+#  pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 #include <ImfHeader.h>
 #include <ImfInputFile.h>
 #include <ImfOutputFile.h>
@@ -52,12 +60,7 @@
 #include <half.h>
 #include "grfmt_exr.hpp"
 
-#if defined _MSC_VER && _MSC_VER >= 1200
-#pragma comment(lib, "Half.lib")
-#pragma comment(lib, "Iex.lib")
-#pragma comment(lib, "IlmImf.lib")
-#pragma comment(lib, "IlmThread.lib")
-#pragma comment(lib, "Imath.lib")
+#if defined _WIN32
 
 #undef UINT
 #define UINT ((Imf::PixelType)0)
@@ -108,7 +111,7 @@ bool  ExrDecoder::readHeader()
     bool result = false;
 
     m_file = new InputFile( m_filename.c_str() );
-    
+
     if( !m_file ) // probably paranoid
         return false;
 
@@ -168,7 +171,7 @@ bool  ExrDecoder::readHeader()
             uintcnt += ( m_blue->type == UINT );
         }
         m_type = (chcnt == uintcnt) ? UINT : FLOAT;
-    
+
         m_isfloat = (m_type == FLOAT);
     }
 
@@ -183,7 +186,7 @@ bool  ExrDecoder::readData( Mat& img )
 {
     m_native_depth = CV_MAT_DEPTH(type()) == img.depth();
     bool color = img.channels() > 1;
-    
+
     uchar* data = img.data;
     int step = img.step;
     bool justcopy = m_native_depth;
@@ -550,12 +553,12 @@ void  ExrDecoder::RGBToGray( float *in, float *out )
     }
 }
 
-    
+
 ImageDecoder ExrDecoder::newDecoder() const
 {
     return new ExrDecoder;
-} 
-    
+}
+
 /////////////////////// ExrEncoder ///////////////////
 
 
@@ -729,8 +732,8 @@ bool  ExrEncoder::write( const Mat& img, const vector<int>& )
 ImageEncoder ExrEncoder::newEncoder() const
 {
     return new ExrEncoder;
-}    
-    
+}
+
 }
 
 #endif

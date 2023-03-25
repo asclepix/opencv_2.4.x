@@ -3,6 +3,8 @@
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
+#ifdef ANDROID
+
 #include <android/bitmap.h>
 
 #include <android/log.h>
@@ -57,14 +59,14 @@ JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nBitmapToMat2
             AndroidBitmap_unlockPixels(env, bitmap);
             return;
         } catch(cv::Exception e) {
-        	AndroidBitmap_unlockPixels(env, bitmap);
+            AndroidBitmap_unlockPixels(env, bitmap);
             LOGE("nBitmapToMat catched cv::Exception: %s", e.what());
             jclass je = env->FindClass("org/opencv/core/CvException");
             if(!je) je = env->FindClass("java/lang/Exception");
             env->ThrowNew(je, e.what());
             return;
         } catch (...) {
-        	AndroidBitmap_unlockPixels(env, bitmap);
+            AndroidBitmap_unlockPixels(env, bitmap);
             LOGE("nBitmapToMat catched unknown exception (...)");
             jclass je = env->FindClass("java/lang/Exception");
             env->ThrowNew(je, "Unknown exception in JNI code {nBitmapToMat}");
@@ -80,7 +82,7 @@ JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nBitmapToMat
   (JNIEnv * env, jclass, jobject bitmap, jlong m_addr)
 {
     Java_org_opencv_android_Utils_nBitmapToMat2(env, 0, bitmap, m_addr, false);
-}  
+}
 
 /*
  * Class:     org_opencv_android_Utils
@@ -139,14 +141,14 @@ JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nMatToBitmap2
             AndroidBitmap_unlockPixels(env, bitmap);
             return;
         } catch(cv::Exception e) {
-        	AndroidBitmap_unlockPixels(env, bitmap);
+            AndroidBitmap_unlockPixels(env, bitmap);
             LOGE("nMatToBitmap catched cv::Exception: %s", e.what());
             jclass je = env->FindClass("org/opencv/core/CvException");
             if(!je) je = env->FindClass("java/lang/Exception");
             env->ThrowNew(je, e.what());
             return;
         } catch (...) {
-        	AndroidBitmap_unlockPixels(env, bitmap);
+            AndroidBitmap_unlockPixels(env, bitmap);
             LOGE("nMatToBitmap catched unknown exception (...)");
             jclass je = env->FindClass("java/lang/Exception");
             env->ThrowNew(je, "Unknown exception in JNI code {nMatToBitmap}");
@@ -165,3 +167,5 @@ JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nMatToBitmap
 }
 
 } // extern "C"
+
+#endif //ANDROID

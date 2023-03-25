@@ -61,7 +61,7 @@ void CV_FramecountTest::run(int)
 
     const size_t n = sizeof(ext)/sizeof(ext[0]);
 
-	const string src_dir = ts->get_data_path();
+    const string src_dir = ts->get_data_path();
 
     ts->printf(cvtest::TS::LOG, "\n\nSource files directory: %s\n", (src_dir+"video/").c_str());
 
@@ -109,6 +109,6 @@ void CV_FramecountTest::run(int)
         }
     }
 }
-#if BUILD_WITH_VIDEO_INPUT_SUPPORT
+#if BUILD_WITH_VIDEO_INPUT_SUPPORT && defined HAVE_FFMPEG
 TEST(Highgui_Video, framecount) {CV_FramecountTest test; test.safe_run();}
 #endif

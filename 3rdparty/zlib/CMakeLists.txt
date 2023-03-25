@@ -82,7 +82,7 @@ if(UNIX)
   endif()
 endif()
 
-ocv_warnings_disable(CMAKE_C_FLAGS /wd4013 -Wattributes -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations)
+ocv_warnings_disable(CMAKE_C_FLAGS -Wattributes -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations)
 
 set_target_properties(${ZLIB_LIBRARY} PROPERTIES
         OUTPUT_NAME ${ZLIB_LIBRARY}
@@ -97,6 +97,3 @@ endif()
 if(NOT BUILD_SHARED_LIBS)
   install(TARGETS ${ZLIB_LIBRARY} ARCHIVE DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH} COMPONENT main)
 endif()
-
-ocv_parse_header2(ZLIB "${CMAKE_CURRENT_SOURCE_DIR}/zlib.h" ZLIB_VERSION PARENT_SCOPE)
-

@@ -1768,19 +1768,19 @@ static void addChildContour(InputArrayOfArrays contours,
         cvMakeSeqHeaderForArray(CV_SEQ_POLYGON, sizeof(CvSeq), sizeof(Point),
                                 !ci.empty() ? (void*)ci.data : 0, (int)ci.total(),
                                 &seq[i], &block[i] );
-        
+
         int h_next = hierarchy[i][0], h_prev = hierarchy[i][1],
             v_next = hierarchy[i][2], v_prev = hierarchy[i][3];
         seq[i].h_next = (size_t)h_next < ncontours ? &seq[h_next] : 0;
         seq[i].h_prev = (size_t)h_prev < ncontours ? &seq[h_prev] : 0;
         seq[i].v_next = (size_t)v_next < ncontours ? &seq[v_next] : 0;
         seq[i].v_prev = (size_t)v_prev < ncontours ? &seq[v_prev] : 0;
-        
+
         if( v_next >= 0 )
             addChildContour(contours, ncontours, hierarchy, v_next, seq, block);
     }
 }
-    
+
 }
 
 void cv::drawContours( InputOutputArray _image, InputArrayOfArrays _contours,
@@ -1798,20 +1798,20 @@ void cv::drawContours( InputOutputArray _image, InputArrayOfArrays _contours,
 
     if( !last )
         return;
-    
+
     seq.resize(last);
     block.resize(last);
-    
+
     for( i = first; i < last; i++ )
         seq[i].first = 0;
-                              
+
     if( contourIdx >= 0 )
     {
         CV_Assert( 0 <= contourIdx && contourIdx < (int)last );
         first = contourIdx;
         last = contourIdx + 1;
     }
-    
+
     for( i = first; i < last; i++ )
     {
         Mat ci = _contours.getMat((int)i);
@@ -1834,7 +1834,7 @@ void cv::drawContours( InputOutputArray _image, InputArrayOfArrays _contours,
         size_t count = last - first;
         CV_Assert(hierarchy.total() == ncontours && hierarchy.type() == CV_32SC4 );
         const Vec4i* h = hierarchy.ptr<Vec4i>();
-        
+
         if( count == ncontours )
         {
             for( i = first; i < last; i++ )

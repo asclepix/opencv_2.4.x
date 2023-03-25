@@ -1,9 +1,10 @@
-import numpy as np
-import cv2
+'''
+Floodfill sample.
 
-help_message = '''USAGE: floodfill.py [<image>]
+Usage:
+  floodfill.py [<image>]
 
-Click on the image to set seed point
+  Click on the image to set seed point
 
 Keys:
   f     - toggle floating range
@@ -11,11 +12,14 @@ Keys:
   ESC   - exit
 '''
 
+import numpy as np
+import cv2
+
 if __name__ == '__main__':
     import sys
     try: fn = sys.argv[1]
     except: fn = '../cpp/fruits.jpg'
-    print help_message
+    print __doc__
 
     img = cv2.imread(fn, True)
     h, w = img.shape[:2]
@@ -62,4 +66,4 @@ if __name__ == '__main__':
             connectivity = 12-connectivity
             print 'connectivity =', connectivity
             update()
-    cv2.destroyAllWindows() 			
+    cv2.destroyAllWindows()

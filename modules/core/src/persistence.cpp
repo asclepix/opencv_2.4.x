@@ -2793,7 +2793,7 @@ cvOpenFileStorage( const char* filename, CvMemStorage* dststorage, int flags, co
         fs->buffer_end = fs->buffer_start + buf_size;
         if( fs->fmt == CV_STORAGE_FORMAT_XML )
         {
-            size_t file_size = fs->file ? ftell( fs->file ) : (size_t)0;
+            size_t file_size = fs->file ? (size_t)ftell( fs->file ) : (size_t)0;
             fs->strstorage = cvCreateChildMemStorage( fs->memstorage );
             if( !append || file_size == 0 )
             {
@@ -5202,11 +5202,11 @@ string FileStorage::releaseAndGetString()
     string buf;
     if( fs.obj && fs.obj->outbuf )
         icvClose(fs.obj, &buf);
-    
+
     release();
-	return buf;
-}    
-    
+    return buf;
+}
+
 FileNode FileStorage::root(int streamidx) const
 {
     return isOpened() ? FileNode(fs, cvGetRootFileNode(fs, streamidx)) : FileNode();

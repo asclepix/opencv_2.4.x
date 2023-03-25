@@ -153,9 +153,12 @@ Calculates the cross-power spectrum of two supplied source arrays. The arrays ar
 
 .. ocv:function:: Point2d phaseCorrelate(InputArray src1, InputArray src2, InputArray window = noArray())
 
+.. ocv:function:: Point2d phaseCorrelateRes(InputArray src1, InputArray src2, InputArray window, double* response = 0)
+
     :param src1: Source floating point array (CV_32FC1 or CV_64FC1)
     :param src2: Source floating point array (CV_32FC1 or CV_64FC1)
     :param window: Floating point array with windowing coefficients to reduce edge effects (optional).
+    :param response: Signal power within the 5x5 centroid around the peak, between 0 and 1 (optional).
 
 Return value: detected phase shift (sub-pixel) between the two arrays.
 
@@ -189,6 +192,8 @@ The function performs the following equations
     .. math::
 
          (\Delta x, \Delta y) = \texttt{weightedCentroid} \{\arg \max_{(x, y)}\{r\}\}
+
+* If non-zero, the response parameter is computed as the sum of the elements of r within the 5x5 centroid around the peak location. It is normalized to a maximum of 1 (meaning there is a single peak) and will be smaller when there are multiple peaks.
 
 .. seealso::
     :ocv:func:`dft`,

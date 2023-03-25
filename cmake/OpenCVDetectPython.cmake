@@ -28,7 +28,7 @@ if(PYTHON_EXECUTABLE)
     string(REGEX MATCH "[0-9]+.[0-9]+" PYTHON_VERSION_MAJOR_MINOR "${PYTHON_VERSION_FULL}")
     string(REGEX MATCH "[0-9]+.[0-9]+.[0-9]+" PYTHON_VERSION_FULL "${PYTHON_VERSION_FULL}")
   endif()
-  
+
   if(NOT ANDROID AND NOT IOS)
     if(CMAKE_VERSION VERSION_GREATER 2.8.8)
       find_host_package(PythonLibs ${PYTHON_VERSION_FULL} EXACT)
@@ -78,13 +78,13 @@ if(PYTHON_EXECUTABLE)
                       RESULT_VARIABLE PYTHON_NUMPY_PROCESS
                       OUTPUT_VARIABLE PYTHON_NUMPY_INCLUDE_DIR
                       OUTPUT_STRIP_TRAILING_WHITESPACE)
-                      
+
       if(PYTHON_NUMPY_PROCESS EQUAL 0)
         file(TO_CMAKE_PATH "${PYTHON_NUMPY_INCLUDE_DIR}" _PYTHON_NUMPY_INCLUDE_DIR)
         set(PYTHON_NUMPY_INCLUDE_DIR ${_PYTHON_NUMPY_INCLUDE_DIR} CACHE PATH "Path to numpy headers")
       endif()
     endif()
-    
+
     if(PYTHON_NUMPY_INCLUDE_DIR)
       set(PYTHON_USE_NUMPY TRUE)
       execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import numpy; print numpy.version.version"
@@ -95,19 +95,23 @@ if(PYTHON_EXECUTABLE)
   endif(NOT ANDROID AND NOT IOS)
 
   if(BUILD_DOCS)
-    # look for Sphinx
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sphinx; print sphinx.__version__"
-                    RESULT_VARIABLE SPHINX_PROCESS
-                    OUTPUT_VARIABLE SPHINX_VERSION
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-
-    if(SPHINX_PROCESS EQUAL 0)
-      find_host_program(SPHINX_BUILD sphinx-build)
-      if(SPHINX_BUILD)
-        set(HAVE_SPHINX 1)
-        message(STATUS "Found Sphinx ${SPHINX_VERSION}: ${SPHINX_BUILD}")
-      endif()
+    find_host_program(SPHINX_BUILD sphinx-build)
+    if(SPHINX_BUILD)
+        if(UNIX)
+            execute_process(COMMAND sh -c "${SPHINX_BUILD} -_ 2>&1 | sed -ne 1p"
+                             RESULT_VARIABLE SPHINX_PROCESS
+                             OUTPUT_VARIABLE SPHINX_VERSION
+                             OUTPUT_STRIP_TRAILING_WHITESPACE)
+        else()
+            execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sphinx; print sphinx.__version__"
+                            RESULT_VARIABLE SPHINX_PROCESS
+                            OUTPUT_VARIABLE SPHINX_VERSION
+                            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        endif()
+        if(SPHINX_PROCESS EQUAL 0)
+          set(HAVE_SPHINX 1)
+          message(STATUS "Found Sphinx ${SPHINX_VERSION}: ${SPHINX_BUILD}")
+        endif()
     endif()
   endif(BUILD_DOCS)
 endif(PYTHON_EXECUTABLE)

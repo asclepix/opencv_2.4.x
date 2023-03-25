@@ -962,18 +962,10 @@ void ChamferMatcher::Matching::computeDistanceTransform(Mat& edges_img, Mat& dis
     for (int y=0;y<h;++y) {
         for (int x=0;x<w;++x) {
             // initialize
-<<<<<<< HEAD
-            
-            annotate_img.at<Vec2i>(y,x)[0]=x;
-            annotate_img.at<Vec2i>(y,x)[1]=y;
-            
-=======
-            if (&annotate_img!=NULL) {
+            //if (&annotate_img!=NULL) {
                 annotate_img.at<Vec2i>(y,x)[0]=x;
                 annotate_img.at<Vec2i>(y,x)[1]=y;
-            }
-
->>>>>>> 2.4.3
+            //}
             uchar edge_val = edges_img.at<uchar>(y,x);
             if( (edge_val!=0) ) {
                 q.push(std::make_pair(x,y));

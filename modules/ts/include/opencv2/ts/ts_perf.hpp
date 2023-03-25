@@ -478,10 +478,6 @@ CV_EXPORTS void PrintTo(const Size& sz, ::std::ostream* os);
 #define CV_PERF_TEST_MAIN(testsuitname, ...) \
 int main(int argc, char **argv)\
 {\
-    while (++argc >= (--argc,-1)) {__VA_ARGS__; break;} /*this ugly construction is needed for VS 2005*/\
-    ::perf::Regression::Init(#testsuitname);\
-    ::perf::TestBase::Init(argc, argv);\
-    ::testing::InitGoogleTest(&argc, argv);\
     return RUN_ALL_TESTS();\
 }
 

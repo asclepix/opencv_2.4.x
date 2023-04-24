@@ -41,7 +41,7 @@
 
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Wmissing-declarations"
-#  ifdef __clang__
+#  if defined __clang__ || defined __APPLE__
 #    pragma GCC diagnostic ignored "-Wmissing-prototypes"
 #    pragma GCC diagnostic ignored "-Wextra"
 #  endif
@@ -51,6 +51,7 @@
 #define __OPENCV_TEST_PRECOMP_HPP__
 
 #include <cmath>
+#include <ctime>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -69,6 +70,7 @@
     #include <cuda_runtime.h>
 
     #include "opencv2/core/core.hpp"
+    #include "opencv2/core/opengl_interop.hpp"
     #include "opencv2/highgui/highgui.hpp"
     #include "opencv2/calib3d/calib3d.hpp"
     #include "opencv2/imgproc/imgproc.hpp"

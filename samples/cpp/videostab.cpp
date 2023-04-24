@@ -1,3 +1,7 @@
+#if defined __clang__
+#  pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
+#endif
+
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -32,7 +36,7 @@ public:
         ifstream f(path.c_str());
         if (!f.is_open())
             throw runtime_error("can't open motions file: " + path);
-        int size; f >> size;
+        int size = 0; f >> size;
         motions_.resize(size);
         for (int i = 0; i < size; ++i)
         {

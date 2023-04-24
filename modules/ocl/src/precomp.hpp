@@ -12,10 +12,12 @@
 //
 // Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
 // Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
+// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // @Authors
 //    Guoping Long, longguoping@gmail.com
+//    Yao Wang, bitwangyaoyao@gmail.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -46,7 +48,7 @@
 #ifndef __OPENCV_PRECOMP_H__
 #define __OPENCV_PRECOMP_H__
 
-#if _MSC_VER >= 1200
+#if defined _MSC_VER && _MSC_VER >= 1200
 #pragma warning( disable: 4267 4324 4244 4251 4710 4711 4514 4996 )
 #endif
 
@@ -93,6 +95,8 @@ namespace cv
         ///////////////////////////OpenCL call wrappers////////////////////////////
         void openCLMallocPitch(Context *clCxt, void **dev_ptr, size_t *pitch,
                                size_t widthInBytes, size_t height);
+        void openCLMallocPitchEx(Context *clCxt, void **dev_ptr, size_t *pitch,
+                               size_t widthInBytes, size_t height, DevMemRW rw_type, DevMemType mem_type);
         void openCLMemcpy2D(Context *clCxt, void *dst, size_t dpitch,
                             const void *src, size_t spitch,
                             size_t width, size_t height, enum openCLMemcpyKind kind, int channels = -1);
@@ -131,16 +135,17 @@ namespace cv
             //Information of the OpenCL context
             cl_context clContext;
             cl_command_queue clCmdQueue;
-            cl_device_id *devices;
+            cl_device_id devices;
             string devName;
             cl_uint maxDimensions;
             size_t maxWorkGroupSize;
-            size_t *maxWorkItemSizes;
+            size_t maxWorkItemSizes[4];
             cl_uint maxComputeUnits;
             int double_support;
             //extra options to recognize vendor specific fp64 extensions
-            char *extra_options;
+            char extra_options[512];
             string Binpath;
+            int unified_memory; //1 means integrated GPU, otherwise this value is 0
         };
     }
 }

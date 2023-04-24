@@ -194,10 +194,10 @@ namespace cv { namespace gpu { namespace device
             if ( y > 0 && connected(intensity, image(y - 1, x)))
                 c |= UP;
 
-            if ( x - 1 < image.cols && connected(intensity, image(y, x + 1)))
+            if ( x + 1 < image.cols && connected(intensity, image(y, x + 1)))
                 c |= RIGHT;
 
-            if ( y - 1 < image.rows && connected(intensity, image(y + 1, x)))
+            if ( y + 1 < image.rows && connected(intensity, image(y + 1, x)))
                 c |= DOWN;
 
             components(y, x) = c;
@@ -497,6 +497,7 @@ namespace cv { namespace gpu { namespace device
 
         void labelComponents(const PtrStepSzb& edges, PtrStepSzi comps, int flags, cudaStream_t stream)
         {
+            (void) flags;
             dim3 block(CTA_SIZE_X, CTA_SIZE_Y);
             dim3 grid(divUp(edges.cols, TILE_COLS), divUp(edges.rows, TILE_ROWS));
 

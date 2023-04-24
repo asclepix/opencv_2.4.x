@@ -59,6 +59,8 @@ void cv::gpu::magnitudeSqr(const GpuMat&, const GpuMat&, GpuMat&, Stream&) { thr
 void cv::gpu::phase(const GpuMat&, const GpuMat&, GpuMat&, bool, Stream&) { throw_nogpu(); }
 void cv::gpu::cartToPolar(const GpuMat&, const GpuMat&, GpuMat&, GpuMat&, bool, Stream&) { throw_nogpu(); }
 void cv::gpu::polarToCart(const GpuMat&, const GpuMat&, GpuMat&, GpuMat&, bool, Stream&) { throw_nogpu(); }
+void cv::gpu::normalize(const GpuMat&, GpuMat&, double, double, int, int, const GpuMat&) { throw_nogpu(); }
+void cv::gpu::normalize(const GpuMat&, GpuMat&, double, double, int, int, const GpuMat&, GpuMat&, GpuMat&) { throw_nogpu(); }
 
 #else /* !defined (HAVE_CUDA) */
 
@@ -68,11 +70,16 @@ void cv::gpu::polarToCart(const GpuMat&, const GpuMat&, GpuMat&, GpuMat&, bool, 
 void cv::gpu::gemm(const GpuMat& src1, const GpuMat& src2, double alpha, const GpuMat& src3, double beta, GpuMat& dst, int flags, Stream& stream)
 {
 #ifndef HAVE_CUBLAS
-    (void)src1; (void)src2; (void)alpha; (void)src3; (void)beta; (void)dst; (void)flags; (void)stream;
+    (void)src1;
+    (void)src2;
+    (void)alpha;
+    (void)src3;
+    (void)beta;
+    (void)dst;
+    (void)flags;
+    (void)stream;
     CV_Error(CV_StsNotImplemented, "The library was build without CUBLAS");
-
 #else
-
     // CUBLAS works with column-major matrices
 
     CV_Assert(src1.type() == CV_32FC1 || src1.type() == CV_32FC2 || src1.type() == CV_64FC1 || src1.type() == CV_64FC2);
@@ -80,7 +87,7 @@ void cv::gpu::gemm(const GpuMat& src1, const GpuMat& src2, double alpha, const G
 
     if (src1.depth() == CV_64F)
     {
-        if (!TargetArchs::builtWith(NATIVE_DOUBLE) || !DeviceInfo().supports(NATIVE_DOUBLE))
+        if (!deviceSupports(NATIVE_DOUBLE))
             CV_Error(CV_StsUnsupportedFormat, "The device doesn't support double");
     }
 
@@ -188,7 +195,6 @@ void cv::gpu::gemm(const GpuMat& src1, const GpuMat& src2, double alpha, const G
     }
 
     cublasSafeCall( cublasDestroy_v2(handle) );
-
 #endif
 }
 
@@ -227,7 +233,7 @@ void cv::gpu::transpose(const GpuMat& src, GpuMat& dst, Stream& s)
     }
     else // if (src.elemSize() == 8)
     {
-        if (!TargetArchs::builtWith(NATIVE_DOUBLE) || !DeviceInfo().supports(NATIVE_DOUBLE))
+        if (!deviceSupports(NATIVE_DOUBLE))
             CV_Error(CV_StsUnsupportedFormat, "The device doesn't support double");
 
         NppStStreamHandler h(stream);
@@ -523,6 +529,49 @@ void cv::gpu::cartToPolar(const GpuMat& x, const GpuMat& y, GpuMat& mag, GpuMat&
 void cv::gpu::polarToCart(const GpuMat& magnitude, const GpuMat& angle, GpuMat& x, GpuMat& y, bool angleInDegrees, Stream& stream)
 {
     polarToCart_caller(magnitude, angle, x, y, angleInDegrees, StreamAccessor::getStream(stream));
+}
+
+////////////////////////////////////////////////////////////////////////
+// normalize
+
+void cv::gpu::normalize(const GpuMat& src, GpuMat& dst, double a, double b, int norm_type, int dtype, const GpuMat& mask)
+{
+    GpuMat norm_buf;
+    GpuMat cvt_buf;
+    normalize(src, dst, a, b, norm_type, dtype, mask, norm_buf, cvt_buf);
+}
+
+void cv::gpu::normalize(const GpuMat& src, GpuMat& dst, double a, double b, int norm_type, int dtype, const GpuMat& mask, GpuMat& norm_buf, GpuMat& cvt_buf)
+{
+    double scale = 1, shift = 0;
+    if (norm_type == NORM_MINMAX)
+    {
+        double smin = 0, smax = 0;
+        double dmin = std::min(a, b), dmax = std::max(a, b);
+        minMax(src, &smin, &smax, mask, norm_buf);
+        scale = (dmax - dmin) * (smax - smin > numeric_limits<double>::epsilon() ? 1.0 / (smax - smin) : 0.0);
+        shift = dmin - smin * scale;
+    }
+    else if (norm_type == NORM_L2 || norm_type == NORM_L1 || norm_type == NORM_INF)
+    {
+        scale = norm(src, norm_type, mask, norm_buf);
+        scale = scale > numeric_limits<double>::epsilon() ? a / scale : 0.0;
+        shift = 0;
+    }
+    else
+    {
+        CV_Error(CV_StsBadArg, "Unknown/unsupported norm type");
+    }
+
+    if (mask.empty())
+    {
+        src.convertTo(dst, dtype, scale, shift);
+    }
+    else
+    {
+        src.convertTo(cvt_buf, dtype, scale, shift);
+        cvt_buf.copyTo(dst, mask);
+    }
 }
 
 #endif /* !defined (HAVE_CUDA) */

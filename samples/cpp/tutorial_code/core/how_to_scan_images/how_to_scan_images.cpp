@@ -6,7 +6,7 @@
 using namespace std;
 using namespace cv;
 
-void help()
+static void help()
 {
     cout
         << "\n--------------------------------------------------------------------------" << endl
@@ -45,11 +45,11 @@ int main( int argc, char* argv[])
         return -1;
     }
 
-    int divideWith; // convert our input string to number - C++ style
+    int divideWith = 0; // convert our input string to number - C++ style
     stringstream s;
     s << argv[2];
     s >> divideWith;
-    if (!s)
+    if (!s || !divideWith)
     {
         cout << "Invalid number entered for dividing. " << endl;
         return -1;
@@ -57,7 +57,7 @@ int main( int argc, char* argv[])
 
     uchar table[256];
     for (int i = 0; i < 256; ++i)
-       table[i] = divideWith* (i/divideWith);
+       table[i] = (uchar)(divideWith * (i/divideWith));
 
     const int times = 100;
     double t;

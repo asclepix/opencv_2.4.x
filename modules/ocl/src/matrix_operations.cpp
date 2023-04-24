@@ -12,10 +12,12 @@
 //
 // Copyright (C) 2010-2012, Institute Of Software Chinese Academy Of Science, all rights reserved.
 // Copyright (C) 2010-2012, Advanced Micro Devices, Inc., all rights reserved.
+// Copyright (C) 2010-2012, Multicoreware, Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // @Authors
 //    Niko Li, newlife20080214@gmail.com
+//    Yao Wang, bitwangyaoyao@gmail.com
 //
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -56,60 +58,6 @@ using namespace std;
 //////////////////////////////// oclMat ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-#if !defined (HAVE_OPENCL)
-
-namespace cv
-{
-    namespace ocl
-    {
-        void oclMat::upload(const Mat & /*m*/)
-        {
-            throw_nogpu();
-        }
-        void oclMat::download(cv::Mat & /*m*/) const
-        {
-            throw_nogpu();
-        }
-        void oclMat::copyTo( oclMat & /*m*/ ) const
-        {
-            throw_nogpu();
-        }
-        void oclMat::copyTo( oclMat & /*m*/, const oclMat &/* mask */) const
-        {
-            throw_nogpu();
-        }
-        void oclMat::convertTo( oclMat & /*m*/, int /*rtype*/, double /*alpha*/, double /*beta*/ ) const
-        {
-            throw_nogpu();
-        }
-        oclMat &oclMat::operator = (const Scalar & /*s*/)
-        {
-            throw_nogpu();
-            return *this;
-        }
-        oclMat &oclMat::setTo(const Scalar & /*s*/, const oclMat & /*mask*/)
-        {
-            throw_nogpu();
-            return *this;
-        }
-        oclMat oclMat::reshape(int /*new_cn*/, int /*new_rows*/) const
-        {
-            throw_nogpu();
-            return oclMat();
-        }
-        void oclMat::create(int /*_rows*/, int /*_cols*/, int /*_type*/)
-        {
-            throw_nogpu();
-        }
-        void oclMat::release()
-        {
-            throw_nogpu();
-        }
-    }
-}
-
-#else /* !defined (HAVE_OPENCL) */
-
 //helper routines
 namespace cv
 {
@@ -121,12 +69,14 @@ namespace cv
         extern const char *operator_setTo;
         extern const char *operator_setToM;
         extern const char *convertC3C4;
+        extern DevMemType gDeviceMemType;
+        extern DevMemRW gDeviceMemRW;
     }
 }
 
 ////////////////////////////////////////////////////////////////////////
 // convert_C3C4
-void convert_C3C4(const cl_mem &src, oclMat &dst)
+static void convert_C3C4(const cl_mem &src, oclMat &dst)
 {
     int dstStep_in_pixel = dst.step1() / dst.oclchannels();
     int pixel_end = dst.wholecols * dst.wholerows - 1;
@@ -174,7 +124,7 @@ void convert_C3C4(const cl_mem &src, oclMat &dst)
 }
 ////////////////////////////////////////////////////////////////////////
 // convert_C4C3
-void convert_C4C3(const oclMat &src, cl_mem &dst)
+static void convert_C4C3(const oclMat &src, cl_mem &dst)
 {
     int srcStep_in_pixel = src.step1() / src.oclchannels();
     int pixel_end = src.wholecols * src.wholerows - 1;
@@ -336,7 +286,7 @@ inline int divUp(int total, int grain)
 ///////////////////////////////////////////////////////////////////////////
 ////////////////////////////////// CopyTo /////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-void copy_to_with_mask(const oclMat &src, oclMat &dst, const oclMat &mask, string kernelName)
+static void copy_to_with_mask(const oclMat &src, oclMat &dst, const oclMat &mask, string kernelName)
 {
     CV_DbgAssert( dst.rows == mask.rows && dst.cols == mask.cols &&
                   src.rows == dst.rows && src.cols == dst.cols
@@ -401,7 +351,7 @@ void cv::ocl::oclMat::copyTo( oclMat &mat, const oclMat &mask) const
 ///////////////////////////////////////////////////////////////////////////
 //////////////////////////////// ConvertTo ////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-void convert_run(const oclMat &src, oclMat &dst, double alpha, double beta)
+static void convert_run(const oclMat &src, oclMat &dst, double alpha, double beta)
 {
     string kernelName = "convert_to_S";
     stringstream idxStr;
@@ -472,7 +422,7 @@ oclMat &cv::ocl::oclMat::operator = (const Scalar &s)
     setTo(s);
     return *this;
 }
-void set_to_withoutmask_run(const oclMat &dst, const Scalar &scalar, string kernelName)
+static void set_to_withoutmask_run(const oclMat &dst, const Scalar &scalar, string kernelName)
 {
     vector<pair<size_t , const void *> > args;
 
@@ -642,7 +592,7 @@ void set_to_withoutmask_run(const oclMat &dst, const Scalar &scalar, string kern
     default:
         CV_Error(CV_StsUnsupportedFormat, "unknown depth");
     }
-#if CL_VERSION_1_2
+#ifdef CL_VERSION_1_2
     if(dst.offset == 0 && dst.cols == dst.wholecols)
     {
         clEnqueueFillBuffer(dst.clCxt->impl->clCmdQueue, (cl_mem)dst.data, args[0].second, args[0].first, 0, dst.step * dst.rows, 0, NULL, NULL);
@@ -668,7 +618,7 @@ void set_to_withoutmask_run(const oclMat &dst, const Scalar &scalar, string kern
 #endif
 }
 
-void set_to_withmask_run(const oclMat &dst, const Scalar &scalar, const oclMat &mask, string kernelName)
+static void set_to_withmask_run(const oclMat &dst, const Scalar &scalar, const oclMat &mask, string kernelName)
 {
     CV_DbgAssert( dst.rows == mask.rows && dst.cols == mask.cols);
     vector<pair<size_t , const void *> > args;
@@ -964,7 +914,17 @@ oclMat cv::ocl::oclMat::reshape(int new_cn, int new_rows) const
 
 }
 
+void cv::ocl::oclMat::createEx(Size size, int type, DevMemRW rw_type, DevMemType mem_type)
+{
+    createEx(size.height, size.width, type, rw_type, mem_type);
+}
+
 void cv::ocl::oclMat::create(int _rows, int _cols, int _type)
+{
+    createEx(_rows, _cols, _type, gDeviceMemRW, gDeviceMemType);
+}
+
+void cv::ocl::oclMat::createEx(int _rows, int _cols, int _type, DevMemRW rw_type, DevMemType mem_type)
 {
     clCxt = Context::getContext();
     /* core logic */
@@ -989,7 +949,7 @@ void cv::ocl::oclMat::create(int _rows, int _cols, int _type)
         size_t esz = elemSize();
 
         void *dev_ptr;
-        openCLMallocPitch(clCxt, &dev_ptr, &step, GPU_MATRIX_MALLOC_STEP(esz * cols), rows);
+        openCLMallocPitchEx(clCxt, &dev_ptr, &step, GPU_MATRIX_MALLOC_STEP(esz * cols), rows, rw_type, mem_type);
         //openCLMallocPitch(clCxt,&dev_ptr, &step, esz * cols, rows);
 
         if (esz * cols == step)
@@ -1020,4 +980,26 @@ void cv::ocl::oclMat::release()
     refcount = 0;
 }
 
-#endif /* !defined (HAVE_OPENCL) */
+oclMat& cv::ocl::oclMat::operator+=( const oclMat& m )
+{
+    add(*this, m, *this);
+    return *this;
+}
+
+oclMat& cv::ocl::oclMat::operator-=( const oclMat& m )
+{
+    subtract(*this, m, *this);
+    return *this;
+}
+
+oclMat& cv::ocl::oclMat::operator*=( const oclMat& m )
+{
+    multiply(*this, m, *this);
+    return *this;
+}
+
+oclMat& cv::ocl::oclMat::operator/=( const oclMat& m )
+{
+    divide(*this, m, *this);
+    return *this;
+}

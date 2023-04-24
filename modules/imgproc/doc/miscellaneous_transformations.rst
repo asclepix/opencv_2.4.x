@@ -183,7 +183,7 @@ The function can do the following transformations:
 
     .. math::
 
-        G  \leftarrow Y - 0.344  \cdot (Cr - delta) - 0.714  \cdot (Cb - delta)
+        G  \leftarrow Y - 0.714  \cdot (Cr - delta) - 0.344  \cdot (Cb - delta)
 
     .. math::
 
@@ -661,7 +661,7 @@ Applies a fixed-level threshold to each array element.
 
     :param dst: output array of the same size and type as ``src``.
 
-    :param thresh: treshold value.
+    :param thresh: threshold value.
 
     :param maxval: maximum value to use with the ``THRESH_BINARY`` and ``THRESH_BINARY_INV`` thresholding types.
 

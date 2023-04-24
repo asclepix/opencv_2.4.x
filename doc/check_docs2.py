@@ -1,3 +1,5 @@
+#/usr/bin/env python
+
 import os, sys, fnmatch, re
 
 sys.path.append("../modules/python/src2/")
@@ -36,7 +38,7 @@ doc_signatures_whitelist = [
 "CvArr", "CvFileStorage",
 # other
 "InputArray", "OutputArray",
-]
+] + ["CvSubdiv2D", "CvQuadEdge2D", "CvSubdiv2DPoint", "cvDrawContours"]
 
 defines = ["cvGraphEdgeIdx", "cvFree", "CV_Assert", "cvSqrt", "cvGetGraphVtx", "cvGraphVtxIdx",
 "cvCaptureFromFile", "cvCaptureFromCAM", "cvCalcBackProjectPatch", "cvCalcBackProject",
@@ -114,6 +116,8 @@ def compareSignatures(f, s):
         sarg = arg[1]
         ftype = re.sub(r"\b(cv|std)::", "", (farg[0] or ""))
         stype = re.sub(r"\b(cv|std)::", "", (sarg[0] or ""))
+        ftype = re.sub(r"\s+(\*|&)$", "\\1", ftype)
+        stype = re.sub(r"\s+(\*|&)$", "\\1", stype)
         if ftype != stype:
             return False, "type of argument #" + str(idx+1) + " mismatch"
         fname = farg[1] or "arg" + str(idx)
@@ -149,6 +153,7 @@ def formatSignature(s):
             if idx > 0:
                 _str += ", "
             argtype = re.sub(r"\bcv::", "", arg[0])
+            argtype = re.sub(r"\s+(\*|&)$", "\\1", arg[0])
             bidx = argtype.find('[')
             if bidx < 0:
                 _str += argtype + " "

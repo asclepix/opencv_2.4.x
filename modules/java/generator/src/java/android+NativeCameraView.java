@@ -19,7 +19,12 @@ public class NativeCameraView extends CameraBridgeViewBase {
     public static final String TAG = "NativeCameraView";
     private boolean mStopThread;
     private Thread mThread;
-    private VideoCapture mCamera;
+
+    protected VideoCapture mCamera;
+
+    public NativeCameraView(Context context, int cameraId) {
+        super(context, cameraId);
+    }
 
     public NativeCameraView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -32,7 +37,7 @@ public class NativeCameraView extends CameraBridgeViewBase {
          * 2. We need to start thread which will be getting frames
          */
         /* First step - initialize camera connection */
-        if (!initializeCamera(getWidth(), getHeight()))
+        if (!initializeCamera(width, height))
             return false;
 
         /* now we can start update thread */
@@ -77,12 +82,17 @@ public class NativeCameraView extends CameraBridgeViewBase {
 
     private boolean initializeCamera(int width, int height) {
         synchronized (this) {
-            mCamera = new VideoCapture(Highgui.CV_CAP_ANDROID);
+
+            if (mCameraIndex == -1)
+                mCamera = new VideoCapture(Highgui.CV_CAP_ANDROID);
+            else
+                mCamera = new VideoCapture(Highgui.CV_CAP_ANDROID + mCameraIndex);
 
             if (mCamera == null)
                 return false;
 
-            //TODO: improve error handling
+            if (mCamera.isOpened() == false)
+                return false;
 
             java.util.List<Size> sizes = mCamera.getSupportedPreviewSizes();
 
@@ -91,6 +101,10 @@ public class NativeCameraView extends CameraBridgeViewBase {
 
             mFrameWidth = (int)frameSize.width;
             mFrameHeight = (int)frameSize.height;
+
+            if (mFpsMeter != null) {
+                mFpsMeter.setResolution(mFrameWidth, mFrameHeight);
+            }
 
             AllocateCache();
 
@@ -111,6 +125,31 @@ public class NativeCameraView extends CameraBridgeViewBase {
         }
     }
 
+    private class NativeCameraFrame implements CvCameraViewFrame {
+
+        @Override
+        public Mat rgba() {
+            mCamera.retrieve(mRgba, Highgui.CV_CAP_ANDROID_COLOR_FRAME_RGBA);
+            return mRgba;
+        }
+
+        @Override
+        public Mat gray() {
+            mCamera.retrieve(mGray, Highgui.CV_CAP_ANDROID_GREY_FRAME);
+            return mGray;
+        }
+
+        public NativeCameraFrame(VideoCapture capture) {
+            mCapture = capture;
+            mGray = new Mat();
+            mRgba = new Mat();
+        }
+
+        private VideoCapture mCapture;
+        private Mat mRgba;
+        private Mat mGray;
+    };
+
     private class CameraWorker implements Runnable {
 
         private Mat mRgba = new Mat();
@@ -123,22 +162,9 @@ public class NativeCameraView extends CameraBridgeViewBase {
                     break;
                 }
 
-                switch (mPreviewFormat) {
-                    case Highgui.CV_CAP_ANDROID_COLOR_FRAME_RGBA:
-                    {
-                        mCamera.retrieve(mRgba, Highgui.CV_CAP_ANDROID_COLOR_FRAME_RGBA);
-                        deliverAndDrawFrame(mRgba);
-                    } break;
-                    case Highgui.CV_CAP_ANDROID_GREY_FRAME:
-                        mCamera.retrieve(mGray, Highgui.CV_CAP_ANDROID_GREY_FRAME);
-                        deliverAndDrawFrame(mGray);
-                        break;
-                    default:
-                        Log.e(TAG, "Invalid frame format! Only RGBA and Gray Scale are supported!");
-                }
+                deliverAndDrawFrame(new NativeCameraFrame(mCamera));
 
             } while (!mStopThread);
-
         }
     }
 

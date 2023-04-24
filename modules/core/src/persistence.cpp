@@ -614,10 +614,11 @@ cvGetHashedKey( CvFileStorage* fs, const char* str, int len, int create_missing 
     CvStringHashNode* node = 0;
     unsigned hashval = 0;
     int i, tab_size;
-    CvStringHash* map = fs->str_hash;
 
     if( !fs )
         return 0;
+
+    CvStringHash* map = fs->str_hash;
 
     if( len < 0 )
     {
@@ -5200,6 +5201,7 @@ void FileStorage::release()
 string FileStorage::releaseAndGetString()
 {
     string buf;
+    buf.reserve(16); // HACK: Work around for compiler bug
     if( fs.obj && fs.obj->outbuf )
         icvClose(fs.obj, &buf);
 

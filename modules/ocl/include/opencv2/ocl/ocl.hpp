@@ -41,8 +41,8 @@
 //
 //M*/
 
-#ifndef __OPENCV_GPU_HPP__
-#define __OPENCV_GPU_HPP__
+#ifndef __OPENCV_OCL_HPP__
+#define __OPENCV_OCL_HPP__
 
 #include <memory>
 #include <vector>
@@ -66,6 +66,32 @@ namespace cv
             //CVCL_DEVICE_TYPE_CUSTOM      = (1 << 4)
             CVCL_DEVICE_TYPE_ALL         = 0xFFFFFFFF
         };
+
+        enum DevMemRW
+        {
+            DEVICE_MEM_R_W = 0, 
+            DEVICE_MEM_R_ONLY, 
+            DEVICE_MEM_W_ONLY
+        };
+ 
+        enum DevMemType
+        { 
+            DEVICE_MEM_DEFAULT = 0, 
+            DEVICE_MEM_AHP,         //alloc host pointer
+            DEVICE_MEM_UHP,         //use host pointer
+            DEVICE_MEM_CHP,         //copy host pointer
+            DEVICE_MEM_PM           //persistent memory
+        };
+
+        //Get the global device memory and read/write type	
+        //return 1 if unified memory system supported, otherwise return 0
+        CV_EXPORTS int getDevMemType(DevMemRW& rw_type, DevMemType& mem_type);
+
+        //Set the global device memory and read/write type, 
+        //the newly generated oclMat will all use this type
+        //return -1 if the target type is unsupported, otherwise return 0
+        CV_EXPORTS int setDevMemType(DevMemRW rw_type = DEVICE_MEM_R_W, DevMemType mem_type = DEVICE_MEM_DEFAULT); 
+
         //this class contains ocl runtime information
         class CV_EXPORTS Info
         {
@@ -84,20 +110,26 @@ namespace cv
         //this function may be obsoleted
         //CV_EXPORTS cl_device_id getDevice();
         //the function must be called before any other cv::ocl::functions, it initialize ocl runtime
+        //each Info relates to an OpenCL platform
+        //there is one or more devices in each platform, each one has a separate name
         CV_EXPORTS int getDevice(std::vector<Info> &oclinfo, int devicetype = CVCL_DEVICE_TYPE_GPU);
+
         //set device you want to use, optional function after getDevice be called
+        //the devnum is the index of the selected device in DeviceName vector of INfo
         CV_EXPORTS void setDevice(Info &oclinfo, int devnum = 0);
-        //this function is not ready yet
-        //CV_EXPORTS void getComputeCapability(cl_device_id device, int &major, int &minor);
+
         //optional function, if you want save opencl binary kernel to the file, set its path
         CV_EXPORTS  void setBinpath(const char *path);
-        //The two functions below are used to get opencl runtime so that opencv can interactive with
 
-        //other opencl program
+        //The two functions below enable other opencl program to use ocl module's cl_context and cl_command_queue
+        CV_EXPORTS void* getoclContext();
 
-        CV_EXPORTS void *getoclContext();
+        CV_EXPORTS void* getoclCommandQueue();
 
-        CV_EXPORTS void *getoclCommandQueue();
+        //this function enable ocl module to use customized cl_context and cl_command_queue
+        //getDevice also need to be called before this function
+        CV_EXPORTS void setDeviceEx(Info &oclinfo, void *ctx, void *qu, int devnum = 0);
+
         //////////////////////////////// Error handling ////////////////////////
         CV_EXPORTS void error(const char *error_string, const char *file, const int line, const char *func);
 
@@ -119,6 +151,25 @@ namespace cv
             Impl *impl;
         };
 
+        //! Calls a kernel, by string. Pass globalThreads = NULL, and cleanUp = true, to finally clean-up without executing.
+        CV_EXPORTS double openCLExecuteKernelInterop(Context *clCxt ,
+                                                        const char **source, string kernelName,
+                                                        size_t globalThreads[3], size_t localThreads[3],
+                                                        std::vector< std::pair<size_t, const void *> > &args,
+                                                        int channels, int depth, const char *build_options,
+                                                        bool finish = true, bool measureKernelTime = false,
+                                                        bool cleanUp = true);
+
+        //! Calls a kernel, by file. Pass globalThreads = NULL, and cleanUp = true, to finally clean-up without executing.
+        CV_EXPORTS double openCLExecuteKernelInterop(Context *clCxt ,
+                                                        const char **fileName, const int numFiles, string kernelName,
+                                                        size_t globalThreads[3], size_t localThreads[3],
+                                                        std::vector< std::pair<size_t, const void *> > &args,
+                                                        int channels, int depth, const char *build_options,
+                                                        bool finish = true, bool measureKernelTime = false,
+                                                        bool cleanUp = true);
+
+        class CV_EXPORTS oclMatExpr;
         //////////////////////////////// oclMat ////////////////////////////////
         class CV_EXPORTS oclMat
         {
@@ -152,7 +203,7 @@ namespace cv
             oclMat &operator = (const oclMat &m);
             //! assignment operator. Perfom blocking upload to device.
             oclMat &operator = (const Mat &m);
-
+            oclMat &operator = (const oclMatExpr& expr);
 
             //! pefroms blocking upload data to oclMat.
             void upload(const cv::Mat &m);
@@ -191,10 +242,10 @@ namespace cv
 
             //! sets every oclMatrix element to s
             //It supports 8UC1 8UC4 32SC1 32SC4 32FC1 32FC4
-            oclMat &operator = (const Scalar &s);
+            oclMat& operator = (const Scalar &s);
             //! sets some of the oclMatrix elements to s, according to the mask
             //It supports 8UC1 8UC4 32SC1 32SC4 32FC1 32FC4
-            oclMat &setTo(const Scalar &s, const oclMat &mask = oclMat());
+            oclMat& setTo(const Scalar &s, const oclMat &mask = oclMat());
             //! creates alternative oclMatrix header for the same data, with different
             // number of channels and/or different number of rows. see cvReshape.
             oclMat reshape(int cn, int rows = 0) const;
@@ -203,6 +254,11 @@ namespace cv
             // previous data is unreferenced if needed.
             void create(int rows, int cols, int type);
             void create(Size size, int type);
+
+            //! allocates new oclMatrix with specified device memory type.
+            void createEx(int rows, int cols, int type, DevMemRW rw_type, DevMemType mem_type);
+            void createEx(Size size, int type, DevMemRW rw_type, DevMemType mem_type);
+
             //! decreases reference counter;
             // deallocate the data when reference counter reaches 0.
             void release();
@@ -213,11 +269,16 @@ namespace cv
             //! locates oclMatrix header within a parent oclMatrix. See below
             void locateROI( Size &wholeSize, Point &ofs ) const;
             //! moves/resizes the current oclMatrix ROI inside the parent oclMatrix.
-            oclMat &adjustROI( int dtop, int dbottom, int dleft, int dright );
+            oclMat& adjustROI( int dtop, int dbottom, int dleft, int dright );
             //! extracts a rectangular sub-oclMatrix
             // (this is a generalized form of row, rowRange etc.)
             oclMat operator()( Range rowRange, Range colRange ) const;
             oclMat operator()( const Rect &roi ) const;
+
+            oclMat& operator+=( const oclMat& m );
+            oclMat& operator-=( const oclMat& m );
+            oclMat& operator*=( const oclMat& m );
+            oclMat& operator/=( const oclMat& m );
 
             //! returns true if the oclMatrix data is continuous
             // (i.e. when there are no gaps between successive rows).
@@ -249,7 +310,7 @@ namespace cv
             bool empty() const;
 
             //! returns pointer to y-th row
-            uchar *ptr(int y = 0);
+            uchar* ptr(int y = 0);
             const uchar *ptr(int y = 0) const;
 
             //! template version of the above method
@@ -290,6 +351,7 @@ namespace cv
             int wholerows;
             int wholecols;
         };
+
 
         ///////////////////// mat split and merge /////////////////////////////////
         //! Compose a multi-channel array from several single-channel arrays
@@ -347,7 +409,7 @@ namespace cv
 
         //! transposes the matrix
         // supports  CV_8UC1, 8UC4, 8SC4, 16UC2, 16SC2, 32SC1 and 32FC1.(the same as cuda)
-        CV_EXPORTS void transpose(const oclMat &src1, oclMat &dst);
+        CV_EXPORTS void transpose(const oclMat &src, oclMat &dst);
 
         //! computes element-wise absolute difference of two arrays (c = abs(a - b))
         // supports all types except CV_8SC1,CV_8SC2,CV8SC3 and CV_8SC4
@@ -407,7 +469,7 @@ namespace cv
         CV_EXPORTS void equalizeHist(const oclMat &mat_src, oclMat &mat_dst);
         //! bilateralFilter
         // supports 8UC1 8UC4
-        CV_EXPORTS void bilateralFilter(const oclMat &, oclMat &, int , double, double, int);
+        CV_EXPORTS void bilateralFilter(const oclMat& src, oclMat& dst, int d, double sigmaColor, double sigmaSpave, int borderType=BORDER_DEFAULT);
         //! computes exponent of each matrix element (b = e**a)
         // supports only CV_32FC1 type
         CV_EXPORTS void exp(const oclMat &a, oclMat &b);
@@ -454,18 +516,24 @@ namespace cv
         // supports all types
         CV_EXPORTS void bitwise_xor(const oclMat &src1, const oclMat &src2, oclMat &dst, const oclMat &mask = oclMat());
         CV_EXPORTS void bitwise_xor(const oclMat &src1, const Scalar &s, oclMat &dst, const oclMat &mask = oclMat());
-        //! computes convolution of two images
-
-        //! support only CV_32FC1 type
-
-        CV_EXPORTS void convolve(const oclMat &image, const oclMat &temp1, oclMat &result);
-
 
         //! Logical operators
-        CV_EXPORTS oclMat operator ~ (const oclMat &src);
-        CV_EXPORTS oclMat operator | (const oclMat &src1, const oclMat &src2);
-        CV_EXPORTS oclMat operator & (const oclMat &src1, const oclMat &src2);
-        CV_EXPORTS oclMat operator ^ (const oclMat &src1, const oclMat &src2);
+        CV_EXPORTS oclMat operator ~ (const oclMat &);
+        CV_EXPORTS oclMat operator | (const oclMat &, const oclMat &);
+        CV_EXPORTS oclMat operator & (const oclMat &, const oclMat &);
+        CV_EXPORTS oclMat operator ^ (const oclMat &, const oclMat &);
+
+
+        //! Mathematics operators
+        CV_EXPORTS oclMatExpr operator + (const oclMat &src1, const oclMat &src2);
+        CV_EXPORTS oclMatExpr operator - (const oclMat &src1, const oclMat &src2);
+        CV_EXPORTS oclMatExpr operator * (const oclMat &src1, const oclMat &src2);
+        CV_EXPORTS oclMatExpr operator / (const oclMat &src1, const oclMat &src2);
+
+        //! computes convolution of two images
+        //! support only CV_32FC1 type
+        CV_EXPORTS void convolve(const oclMat &image, const oclMat &temp1, oclMat &result);
+
         CV_EXPORTS void cvtColor(const oclMat &src, oclMat &dst, int code , int dcn = 0);
 
         //////////////////////////////// Filter Engine ////////////////////////////////
@@ -719,7 +787,7 @@ namespace cv
             OclCascadeClassifier() {};
             ~OclCascadeClassifier() {};
 
-            CvSeq *oclHaarDetectObjects(oclMat &gimg, CvMemStorage *storage, double scaleFactor,
+            CvSeq* oclHaarDetectObjects(oclMat &gimg, CvMemStorage *storage, double scaleFactor,
                                         int minNeighbors, int flags, CvSize minSize = cvSize(0, 0), CvSize maxSize = cvSize(0, 0));
         };
 
@@ -729,7 +797,7 @@ namespace cv
         CV_EXPORTS void pyrDown(const oclMat &src, oclMat &dst);
 
         //! upsamples the source image and then smoothes it
-        CV_EXPORTS void pyrUp(const cv::ocl::oclMat &src, cv::ocl::oclMat &dst);
+        CV_EXPORTS void pyrUp(const oclMat &src, oclMat &dst);
 
         //! performs linear blending of two images
         //! to avoid accuracy errors sum of weigths shouldn't be very close to zero
@@ -1705,11 +1773,11 @@ namespace cv
         };
         //////////////// build warping maps ////////////////////
         //! builds plane warping maps
-        CV_EXPORTS void buildWarpPlaneMaps(Size, Rect, const Mat &, const Mat &, const Mat &, float, oclMat &, oclMat &);
+        CV_EXPORTS void buildWarpPlaneMaps(Size src_size, Rect dst_roi, const Mat &K, const Mat &R, const Mat &T, float scale, oclMat &map_x, oclMat &map_y);
         //! builds cylindrical warping maps
-        CV_EXPORTS void buildWarpCylindricalMaps(Size, Rect, const Mat &, const Mat &, float, oclMat &, oclMat &);
+        CV_EXPORTS void buildWarpCylindricalMaps(Size src_size, Rect dst_roi, const Mat &K, const Mat &R, float scale, oclMat &map_x, oclMat &map_y);
         //! builds spherical warping maps
-        CV_EXPORTS void buildWarpSphericalMaps(Size, Rect, const Mat &, const Mat &, float, oclMat &, oclMat &);
+        CV_EXPORTS void buildWarpSphericalMaps(Size src_size, Rect dst_roi, const Mat &K, const Mat &R, float scale, oclMat &map_x, oclMat &map_y);
         //! builds Affine warping maps
         CV_EXPORTS void buildWarpAffineMaps(const Mat &M, bool inverse, Size dsize, oclMat &xmap, oclMat &ymap);
 
@@ -1736,14 +1804,17 @@ namespace cv
                                           const oclMat &bu, const oclMat &bv,
                                           float pos, oclMat &newFrame, oclMat &buf);
 
+        //! computes moments of the rasterized shape or a vector of points
+        CV_EXPORTS Moments ocl_moments(InputArray _array, bool binaryImage);
     }
 }
-#if _MSC_VER >= 1200
-#pragma warning( push)
-#pragma warning( disable: 4267)
+#if defined _MSC_VER && _MSC_VER >= 1200
+#  pragma warning( push)
+#  pragma warning( disable: 4267)
 #endif
 #include "opencv2/ocl/matrix_operations.hpp"
-#if _MSC_VER >= 1200
-#pragma warning( pop)
+#if defined _MSC_VER && _MSC_VER >= 1200
+#  pragma warning( pop)
 #endif
+
 #endif /* __OPENCV_GPU_HPP__ */

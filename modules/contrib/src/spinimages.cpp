@@ -85,8 +85,7 @@ namespace
     };
     size_t colors_mum = sizeof(colors)/sizeof(colors[0]);
 
-#if defined __cplusplus  && __cplusplus > 199711L
-template<class FwIt, class T> void iota(FwIt first, FwIt last, T value) { while(first != last) *first++ = value++; }
+#if (defined __cplusplus  && __cplusplus > 199711L) || defined _STLPORT_MAJOR
 #else
 template<class FwIt, class T> void iota(FwIt first, FwIt last, T value) { while(first != last) *first++ = value++; }
 #endif

@@ -41,7 +41,7 @@ Abstract base class for computing descriptors for image keypoints. ::
 
 
 In this interface, a keypoint descriptor can be represented as a
-dense, fixed-dimension vector of a basic type. Most descriptors 
+dense, fixed-dimension vector of a basic type. Most descriptors
 follow this pattern as it simplifies computing
 distances between descriptors. Therefore, a collection of
 descriptors is represented as
@@ -79,6 +79,7 @@ The current implementation supports the following types of a descriptor extracto
  * ``"SIFT"`` -- :ocv:class:`SIFT`
  * ``"SURF"`` -- :ocv:class:`SURF`
  * ``"ORB"`` -- :ocv:class:`ORB`
+ * ``"BRISK"`` -- :ocv:class:`BRISK`
  * ``"BRIEF"`` -- :ocv:class:`BriefDescriptorExtractor`
 
 A combined format is also supported: descriptor extractor adapter name ( ``"Opponent"`` --

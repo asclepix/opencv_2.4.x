@@ -75,10 +75,10 @@ namespace cv { namespace gpu { namespace device
         size_t bindMaskSumTex(PtrStepSz<unsigned int> maskSum);
 
         void icvCalcLayerDetAndTrace_gpu(const PtrStepf& det, const PtrStepf& trace, int img_rows, int img_cols,
-            int octave, int nOctaveLayers, const size_t sumOffset);
+            int octave, int nOctaveLayer);
 
         void icvFindMaximaInLayer_gpu(const PtrStepf& det, const PtrStepf& trace, int4* maxPosBuffer, unsigned int* maxCounter,
-            int img_rows, int img_cols, int octave, bool use_mask, int nLayers, const size_t maskOffset);
+            int img_rows, int img_cols, int octave, bool use_mask, int nLayers);
 
         void icvInterpolateKeypoint_gpu(const PtrStepf& det, const int4* maxPosBuffer, unsigned int maxCounter,
             float* featureX, float* featureY, int* featureLaplacian, int* featureOctave, float* featureSize, float* featureHessian,
@@ -86,8 +86,7 @@ namespace cv { namespace gpu { namespace device
 
         void icvCalcOrientation_gpu(const float* featureX, const float* featureY, const float* featureSize, float* featureDir, int nFeatures);
 
-        void compute_descriptors_gpu(const PtrStepSzf& descriptors,
-            const float* featureX, const float* featureY, const float* featureSize, const float* featureDir, int nFeatures);
+        void compute_descriptors_gpu(PtrStepSz<float4> descriptors, const float* featureX, const float* featureY, const float* featureSize, const float* featureDir, int nFeatures);
     }
 }}}
 
@@ -122,9 +121,6 @@ namespace
             CV_Assert(mask.empty() || (mask.size() == img.size() && mask.type() == CV_8UC1));
             CV_Assert(surf_.nOctaves > 0 && surf_.nOctaveLayers > 0);
 
-            if (!TargetArchs::builtWith(GLOBAL_ATOMICS) || !DeviceInfo().supports(GLOBAL_ATOMICS))
-                CV_Error(CV_StsNotImplemented, "The device doesn't support global atomics");
-
             const int min_size = calcSize(surf_.nOctaves - 1, 0);
             CV_Assert(img_rows - min_size >= 0);
             CV_Assert(img_cols - min_size >= 0);
@@ -146,8 +142,8 @@ namespace
             loadGlobalConstants(maxCandidates, maxFeatures, img_rows, img_cols, surf_.nOctaveLayers, static_cast<float>(surf_.hessianThreshold));
 
             bindImgTex(img);
-            integralBuffered(img, surf_.sum, surf_.intBuffer);
 
+            integralBuffered(img, surf_.sum, surf_.intBuffer);
             sumOffset = bindSumTex(surf_.sum);
 
             if (use_mask)
@@ -174,10 +170,10 @@ namespace
 
                 loadOctaveConstants(octave, layer_rows, layer_cols);
 
-                icvCalcLayerDetAndTrace_gpu(surf_.det, surf_.trace, img_rows, img_cols, octave, surf_.nOctaveLayers, sumOffset);
+                icvCalcLayerDetAndTrace_gpu(surf_.det, surf_.trace, img_rows, img_cols, octave, surf_.nOctaveLayers);
 
                 icvFindMaximaInLayer_gpu(surf_.det, surf_.trace, surf_.maxPosBuffer.ptr<int4>(), counters.ptr<unsigned int>() + 1 + octave,
-                    img_rows, img_cols, octave, use_mask, surf_.nOctaveLayers, maskOffset);
+                    img_rows, img_cols, octave, use_mask, surf_.nOctaveLayers);
 
                 unsigned int maxCounter;
                 cudaSafeCall( cudaMemcpy(&maxCounter, counters.ptr<unsigned int>() + 1 + octave, sizeof(unsigned int), cudaMemcpyDeviceToHost) );

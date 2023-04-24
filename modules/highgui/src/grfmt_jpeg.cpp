@@ -63,6 +63,9 @@
 typedef unsigned char boolean;
 #endif
 
+#undef FALSE
+#undef TRUE
+
 extern "C" {
 #include "jpeglib.h"
 }
@@ -229,12 +232,16 @@ bool  JpegDecoder::readHeader()
             if( m_f )
                 jpeg_stdio_src( &state->cinfo, m_f );
         }
-        jpeg_read_header( &state->cinfo, TRUE );
 
-        m_width = state->cinfo.image_width;
-        m_height = state->cinfo.image_height;
-        m_type = state->cinfo.num_components > 1 ? CV_8UC3 : CV_8UC1;
-        result = true;
+        if (state->cinfo.src != 0)
+        {
+            jpeg_read_header( &state->cinfo, TRUE );
+
+            m_width = state->cinfo.image_width;
+            m_height = state->cinfo.image_height;
+            m_type = state->cinfo.num_components > 1 ? CV_8UC3 : CV_8UC1;
+            result = true;
+        }
     }
 
     if( !result )
@@ -530,8 +537,10 @@ ImageEncoder JpegEncoder::newEncoder() const
     return new JpegEncoder;
 }
 
-bool  JpegEncoder::write( const Mat& img, const vector<int>& params )
+bool JpegEncoder::write( const Mat& img, const vector<int>& params )
 {
+    m_last_error.clear();
+
     struct fileWrapper
     {
         FILE* f;
@@ -626,6 +635,14 @@ bool  JpegEncoder::write( const Mat& img, const vector<int>& params )
     }
 
 _exit_:
+
+    if(!result)
+    {
+        char jmsg_buf[JMSG_LENGTH_MAX];
+        jerr.pub.format_message((j_common_ptr)&cinfo, jmsg_buf);
+        m_last_error = jmsg_buf;
+    }
+
     jpeg_destroy_compress( &cinfo );
 
     return result;

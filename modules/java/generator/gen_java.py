@@ -1,3 +1,5 @@
+#/usr/bin/env python
+
 import sys, re, os.path
 from string import Template
 
@@ -557,6 +559,15 @@ func_arg_fix = {
     }, # '', i.e. no class
 } # func_arg_fix
 
+
+def getLibVersion(version_hpp_path):
+    version_file = open(version_hpp_path, "rt").read()
+    epoch = re.search("^W*#\W*define\W+CV_VERSION_EPOCH\W+(\d+)\W*$", version_file, re.MULTILINE).group(1)
+    major = re.search("^W*#\W*define\W+CV_VERSION_MAJOR\W+(\d+)\W*$", version_file, re.MULTILINE).group(1)
+    minor = re.search("^W*#\W*define\W+CV_VERSION_MINOR\W+(\d+)\W*$", version_file, re.MULTILINE).group(1)
+    revision = re.search("^W*#\W*define\W+CV_VERSION_REVISION\W+(\d+)\W*$", version_file, re.MULTILINE).group(1)
+    return (epoch, major, minor, revision)
+
 class ConstInfo(object):
     def __init__(self, cname, name, val, addedManually=False):
         self.cname = cname
@@ -719,13 +730,16 @@ $imports
 public class %(jc)s {
 """ % { 'm' : self.module, 'jc' : jname } )
 
-#        self.java_code[class_name]["jn_code"].write("""
-#    //
-#    // native stuff
-#    //
-#    static { System.loadLibrary("opencv_java"); }
-#""" )
-
+        if class_name == 'Core':
+            (epoch, major, minor, revision) = getLibVersion(
+                (os.path.dirname(__file__) or '.') + '/../../core/include/opencv2/core/version.hpp')
+            version_str    = '.'.join( (epoch, major, minor, revision) )
+            version_suffix =  ''.join( (epoch, major, minor) )
+            self.classes[class_name].imports.add("java.lang.String")
+            self.java_code[class_name]["j_code"].write("""
+    public static final String VERSION = "%(v)s", NATIVE_LIBRARY_NAME = "opencv_java%(vs)s";
+    public static final int VERSION_EPOCH = %(ep)s, VERSION_MAJOR = %(ma)s, VERSION_MINOR = %(mi)s, VERSION_REVISION = %(re)s;
+""" % { 'v' : version_str, 'vs' : version_suffix, 'ep' : epoch, 'ma' : major, 'mi' : minor, 're' : revision } )
 
 
     def add_class(self, decl):
@@ -869,22 +883,9 @@ public class %(jc)s {
 // This file is auto-generated, please don't edit!
 //
 
-#include <jni.h>
+#define LOG_TAG "org.opencv.%(m)s"
 
-#include "converters.h"
-
-#if defined DEBUG && defined ANDROID
-#  include <android/log.h>
-#  define MODULE_LOG_TAG "OpenCV.%(m)s"
-#  define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, MODULE_LOG_TAG, __VA_ARGS__))
-#else //DEBUG
-#  define LOGD(...)
-#endif //DEBUG
-
-#ifdef _MSC_VER
-#  pragma warning(disable:4800 4244)
-#endif
-
+#include "common.h"
 #include "opencv2/%(m)s/%(m)s.hpp"
 
 using namespace cv;
@@ -1241,6 +1242,10 @@ extern "C" {
                     jni_name = "&%(n)s"
                 else:
                     jni_name = "%(n)s"
+                    if not a.out and not "jni_var" in type_dict[a.ctype]:
+                        # explicit cast to C type to avoid ambiguous call error on platforms (mingw)
+                        # where jni types are different from native types (e.g. jint is not the same as int)
+                        jni_name  = "(%s)%s" % (a.ctype, jni_name)
                 if not a.ctype: # hidden
                     jni_name = a.defval
                 cvargs.append( type_dict[a.ctype].get("jni_name", jni_name) % {"n" : a.name})
@@ -1265,8 +1270,7 @@ JNIEXPORT $rtype JNICALL Java_org_opencv_${module}_${clazz}_$fname
         LOGD("$module::$fname()");
         $prologue
         $retval$cvname( $cvargs );
-        $epilogue
-        $ret
+        $epilogue$ret
     } catch(cv::Exception e) {
         LOGD("$module::$fname() catched cv::Exception: %s", e.what());
         jclass je = env->FindClass("org/opencv/core/CvException");
@@ -1290,7 +1294,7 @@ JNIEXPORT $rtype JNICALL Java_org_opencv_${module}_${clazz}_$fname
         args  = ", ".join(["%s %s" % (type_dict[a.ctype].get("jni_type"), a.name) for a in jni_args]), \
         argst = ", ".join([type_dict[a.ctype].get("jni_type") for a in jni_args]), \
         prologue = "\n        ".join(c_prologue), \
-        epilogue = "  ".join(c_epilogue), \
+        epilogue = "  ".join(c_epilogue) + ("\n        " if c_epilogue else ""), \
         ret = ret, \
         cvname = cvname, \
         cvargs = ", ".join(cvargs), \

@@ -11,7 +11,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 {%- endblock %}
-{% set script_files = script_files + [pathto("_static/insertIframe.js", 1)] %}
 {%- set reldelim1 = reldelim1 is not defined and ' &raquo;' or reldelim1 %}
 {%- set reldelim2 = reldelim2 is not defined and ' |' or reldelim2 %}
 {%- set render_sidebar = (not embedded) and (not theme_nosidebar|tobool) and
@@ -183,7 +182,7 @@
                   {% if theme_lang == 'c' %}
                   {% endif %}
                   {% if theme_lang == 'cpp' %}
-                    <li>Try the <a href="http://opencv.willowgarage.com/wiki/Welcome?action=AttachFile&do=get&target=opencv_cheatsheet.pdf">Cheatsheet</a>.</li>
+                    <li>Try the <a href="http://docs.opencv.org/opencv_cheatsheet.pdf">Cheatsheet</a>.</li>
                   {% endif %}
                   {% if theme_lang == 'py' %}
                     <li>Try the <a href="cookbook.html">Cookbook</a>.</li>

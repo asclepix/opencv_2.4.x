@@ -12,7 +12,6 @@
 //
 // Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
 // Copyright (C) 2009, Willow Garage Inc., all rights reserved.
-// Copyright (C) 1993-2011, NVIDIA Corporation, all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -183,6 +182,186 @@ namespace filter
     {
         typedef void (*caller_t)(PtrStepSz<T> src, PtrStepSz<D> dst, int anchor, int cc, cudaStream_t stream);
 
+#ifdef OPENCV_TINY_GPU_MODULE
+        static const caller_t callers[5][33] =
+        {
+            {
+                0,
+                0,
+                0,
+                row_filter::caller< 3, T, D, BrdRowReflect101>,
+                0,
+                row_filter::caller< 5, T, D, BrdRowReflect101>,
+                0,
+                row_filter::caller< 7, T, D, BrdRowReflect101>,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            },
+            {
+                0,
+                0,
+                0,
+                row_filter::caller< 3, T, D, BrdRowReplicate>,
+                0,
+                row_filter::caller< 5, T, D, BrdRowReplicate>,
+                0,
+                row_filter::caller< 7, T, D, BrdRowReplicate>,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            },
+            {
+                0,
+                0,
+                0,
+                row_filter::caller< 3, T, D, BrdRowConstant>,
+                0,
+                row_filter::caller< 5, T, D, BrdRowConstant>,
+                0,
+                row_filter::caller< 7, T, D, BrdRowConstant>,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            },
+            {
+                0,
+                0,
+                0,
+                row_filter::caller< 3, T, D, BrdRowReflect>,
+                0,
+                row_filter::caller< 5, T, D, BrdRowReflect>,
+                0,
+                row_filter::caller< 7, T, D, BrdRowReflect>,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            },
+            {
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            }
+        };
+#else
         static const caller_t callers[5][33] =
         {
             {
@@ -361,12 +540,17 @@ namespace filter
                 row_filter::caller<32, T, D, BrdRowWrap>
             }
         };
+#endif
+
+        const caller_t caller = callers[brd_type][ksize];
+        if (!caller)
+            cv::gpu::error("Unsupported input parameters for row_filter", __FILE__, __LINE__, "");
 
         if (stream == 0)
             cudaSafeCall( cudaMemcpyToSymbol(row_filter::c_kernel, kernel, ksize * sizeof(float), 0, cudaMemcpyDeviceToDevice) );
         else
             cudaSafeCall( cudaMemcpyToSymbolAsync(row_filter::c_kernel, kernel, ksize * sizeof(float), 0, cudaMemcpyDeviceToDevice, stream) );
 
-        callers[brd_type][ksize]((PtrStepSz<T>)src, (PtrStepSz<D>)dst, anchor, cc, stream);
+        caller((PtrStepSz<T>)src, (PtrStepSz<D>)dst, anchor, cc, stream);
     }
 }

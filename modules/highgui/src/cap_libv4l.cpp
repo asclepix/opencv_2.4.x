@@ -14,7 +14,9 @@ It has been tested with the motempl sample program
 First Patch:  August 24, 2004 Travis Wood   TravisOCV@tkwood.com
 For Release:  OpenCV-Linux Beta4  opencv-0.9.6
 Tested On:    LMLBT44 with 8 video inputs
-Problems?     Post problems/fixes to OpenCV group on groups.yahoo.com
+Problems?     Post your questions at answers.opencv.org,
+              Report bugs at code.opencv.org,
+              Submit your fixes at https://github.com/Itseez/opencv/
 Patched Comments:
 
 TW: The cv cam utils that came with the initial release of OpenCV for LINUX Beta4
@@ -100,7 +102,7 @@ I modified the following:
     autosetup_capture_mode_v4l2 -> autodetect capture modes for v4l2
   - Modifications are according with Video4Linux old codes
   - Video4Linux handling is automatically if it does not recognize a Video4Linux2 device
-  - Tested succesful with Logitech Quickcam Express (V4L), Creative Vista (V4L) and Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Logitech Quickcam Express (V4L), Creative Vista (V4L) and Genius VideoCam Notebook (V4L2)
   - Correct source lines with compiler warning messages
   - Information message from v4l/v4l2 detection
 
@@ -111,7 +113,7 @@ I modified the following:
   - SN9C10x chip based webcams support
   - New methods are internal:
     bayer2rgb24, sonix_decompress -> decoder routines for SN9C10x decoding from Takafumi Mizuno <taka-qce@ls-a.jp> with his pleasure :)
-  - Tested succesful with Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Genius VideoCam Notebook (V4L2)
 
 Sixth Patch: Sept 10, 2005 Csaba Kertesz sign@freemail.hu
 For Release:  OpenCV-Linux Beta5 OpenCV-0.9.7
@@ -121,7 +123,7 @@ I added the following:
   - Get and change V4L capture controls (hue, saturation, brightness, contrast)
   - New method is internal:
     icvSetControl -> set capture controls
-  - Tested succesful with Creative Vista (V4L)
+  - Tested successfully with Creative Vista (V4L)
 
 Seventh Patch: Sept 10, 2005 Csaba Kertesz sign@freemail.hu
 For Release:  OpenCV-Linux Beta5 OpenCV-0.9.7
@@ -130,7 +132,7 @@ I added the following:
   - Detect, get and change V4L2 capture controls (hue, saturation, brightness, contrast, gain)
   - New methods are internal:
     v4l2_scan_controls_enumerate_menu, v4l2_scan_controls -> detect capture control intervals
-  - Tested succesful with Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Genius VideoCam Notebook (V4L2)
 
 8th patch: Jan 5, 2006, Olivier.Bornet@idiap.ch
 Add support of V4L2_PIX_FMT_YUYV and V4L2_PIX_FMT_MJPEG.
@@ -156,12 +158,12 @@ the symptoms were damaged image and 'Corrupt JPEG data: premature end of data se
 
 11th patch: Apr 13, 2010, Filipe Almeida filipe.almeida@ist.utl.pt
 - Tries to setup all properties first through v4l2_ioctl call.
-- Allows seting up all Video4Linux properties through cvSetCaptureProperty instead of only CV_CAP_PROP_BRIGHTNESS, CV_CAP_PROP_CONTRAST, CV_CAP_PROP_SATURATION, CV_CAP_PROP_HUE, CV_CAP_PROP_GAIN and CV_CAP_PROP_EXPOSURE.
+- Allows setting up all Video4Linux properties through cvSetCaptureProperty instead of only CV_CAP_PROP_BRIGHTNESS, CV_CAP_PROP_CONTRAST, CV_CAP_PROP_SATURATION, CV_CAP_PROP_HUE, CV_CAP_PROP_GAIN and CV_CAP_PROP_EXPOSURE.
 
 12th patch: Apr 16, 2010, Filipe Almeida filipe.almeida@ist.utl.pt
 - CvCaptureCAM_V4L structure cleanup (no longer needs <PROPERTY>_{min,max,} variables)
 - Introduction of v4l2_ctrl_range - minimum and maximum allowed values for v4l controls
-- Allows seting up all Video4Linux properties through cvSetCaptureProperty using input values between 0.0 and 1.0
+- Allows setting up all Video4Linux properties through cvSetCaptureProperty using input values between 0.0 and 1.0
 - Gets v4l properties first through v4l2_ioctl call (ignores capture->is_v4l2_device)
 - cvGetCaptureProperty adjusted to support the changes
 - Returns device properties to initial values after device closes
@@ -319,7 +321,6 @@ typedef struct CvCaptureCAM_V4L
    struct v4l2_control control;
    enum v4l2_buf_type type;
    struct v4l2_queryctrl queryctrl;
-   struct v4l2_querymenu querymenu;
 
    /* V4L2 control variables */
    v4l2_ctrl_range** v4l2_ctrl_ranges;
@@ -489,25 +490,6 @@ static int try_init_v4l2(CvCaptureCAM_V4L* capture, char *deviceName)
 }
 
 
-static void v4l2_scan_controls_enumerate_menu(CvCaptureCAM_V4L* capture)
-{
-//  printf (" Menu items:\n");
-  CLEAR (capture->querymenu);
-  capture->querymenu.id = capture->queryctrl.id;
-  for (capture->querymenu.index = capture->queryctrl.minimum;
-       (int)capture->querymenu.index <= capture->queryctrl.maximum;
-       capture->querymenu.index++)
-  {
-    if (0 == xioctl (capture->deviceHandle, VIDIOC_QUERYMENU,
-                     &capture->querymenu))
-    {
-      //printf (" %s\n", capture->querymenu.name);
-    } else {
-        perror ("VIDIOC_QUERYMENU");
-    }
-  }
-}
-
 static void v4l2_free_ranges(CvCaptureCAM_V4L* capture) {
   int i;
   if (capture->v4l2_ctrl_ranges != NULL) {
@@ -588,9 +570,6 @@ static void v4l2_scan_controls(CvCaptureCAM_V4L* capture) {
       if(capture->queryctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
         continue;
       }
-      if (capture->queryctrl.type == V4L2_CTRL_TYPE_MENU) {
-        v4l2_scan_controls_enumerate_menu(capture);
-      }
       if(capture->queryctrl.type != V4L2_CTRL_TYPE_INTEGER &&
          capture->queryctrl.type != V4L2_CTRL_TYPE_BOOLEAN &&
          capture->queryctrl.type != V4L2_CTRL_TYPE_MENU) {
@@ -610,9 +589,6 @@ static void v4l2_scan_controls(CvCaptureCAM_V4L* capture) {
       if(v4l2_ioctl(capture->deviceHandle, VIDIOC_QUERYCTRL, &capture->queryctrl) == 0) {
         if(capture->queryctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
           continue;
-        }
-        if (capture->queryctrl.type == V4L2_CTRL_TYPE_MENU) {
-          v4l2_scan_controls_enumerate_menu(capture);
         }
         if(capture->queryctrl.type != V4L2_CTRL_TYPE_INTEGER &&
            capture->queryctrl.type != V4L2_CTRL_TYPE_BOOLEAN &&
@@ -635,9 +611,6 @@ static void v4l2_scan_controls(CvCaptureCAM_V4L* capture) {
           continue;
         }
 
-        if (capture->queryctrl.type == V4L2_CTRL_TYPE_MENU) {
-          v4l2_scan_controls_enumerate_menu(capture);
-        }
 
         if(capture->queryctrl.type != V4L2_CTRL_TYPE_INTEGER &&
            capture->queryctrl.type != V4L2_CTRL_TYPE_BOOLEAN &&
@@ -854,8 +827,7 @@ static int _capture_V4L (CvCaptureCAM_V4L *capture, char *deviceName)
 
    detect_v4l = try_init_v4l(capture, deviceName);
 
-   if ((detect_v4l == -1)
-       )
+   if (detect_v4l == -1)
    {
      fprintf (stderr, "HIGHGUI ERROR: V4L"
               ": device %s: Unable to open for READ ONLY\n", deviceName);
@@ -863,8 +835,7 @@ static int _capture_V4L (CvCaptureCAM_V4L *capture, char *deviceName)
      return -1;
    }
 
-   if ((detect_v4l <= 0)
-       )
+   if (detect_v4l <= 0)
    {
      fprintf (stderr, "HIGHGUI ERROR: V4L"
               ": device %s: Unable to query number of channels\n", deviceName);
@@ -1665,6 +1636,17 @@ static int icvSetPropertyCAM_V4L(CvCaptureCAM_V4L* capture, int property_id, dou
             width = height = 0;
         }
         break;
+    case CV_CAP_PROP_FPS:
+        struct v4l2_streamparm setfps;
+        memset (&setfps, 0, sizeof(struct v4l2_streamparm));
+        setfps.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        setfps.parm.capture.timeperframe.numerator = 1;
+        setfps.parm.capture.timeperframe.denominator = value;
+        if (xioctl (capture->deviceHandle, VIDIOC_S_PARM, &setfps) < 0){
+            fprintf(stderr, "HIGHGUI ERROR: V4L: Unable to set camera FPS\n");
+            retval=0;
+        }
+        break;
     default:
         retval = icvSetControl(capture, property_id, value);
     }
@@ -1714,6 +1696,7 @@ static void icvCloseCAM_V4L( CvCaptureCAM_V4L* capture ){
 #endif
 
      free(capture->deviceName);
+     capture->deviceName = NULL;
      //v4l2_free_ranges(capture);
      //cvFree((void **)capture);
    }

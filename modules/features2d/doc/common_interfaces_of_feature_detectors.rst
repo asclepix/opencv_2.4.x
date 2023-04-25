@@ -8,6 +8,11 @@ between different algorithms solving the same problem. All objects that implemen
 inherit the
 :ocv:class:`FeatureDetector` interface.
 
+.. note::
+
+   * An example explaining keypoint detection can be found at opencv_source_code/samples/cpp/descriptor_extractor_matcher.cpp
+
+
 KeyPoint
 --------
 .. ocv:class:: KeyPoint
@@ -139,6 +144,11 @@ Also a combined format is supported: feature detector adapter name ( ``"Grid"`` 
 :ocv:class:`PyramidAdaptedFeatureDetector` ) + feature detector name (see above),
 for example: ``"GridFAST"``, ``"PyramidSTAR"`` .
 
+.. note:: When using the SIFT and SURF detector types be sure to add the following lines to your code
+
+     * Add an extra include: `#include <opencv2/nonfree/nonfree.hpp>`
+     * Add an initialisation function at the start of your code: `initModules_nonfree();`
+
 FastFeatureDetector
 -------------------
 .. ocv:class:: FastFeatureDetector : public FeatureDetector
@@ -220,7 +230,7 @@ StarFeatureDetector
 -------------------
 .. ocv:class:: StarFeatureDetector : public FeatureDetector
 
-The class implements the keypoint detector introduced by K. Konolige, synonym of ``StarDetector``.  ::
+The class implements the keypoint detector introduced by [Agrawal08]_, synonym of ``StarDetector``.  ::
 
     class StarFeatureDetector : public FeatureDetector
     {
@@ -233,6 +243,9 @@ The class implements the keypoint detector introduced by K. Konolige, synonym of
     protected:
         ...
     };
+
+.. [Agrawal08] Agrawal, M., Konolige, K., & Blas, M. R. (2008). Censure: Center surround extremas for realtime feature detection and matching. In Computer Vision–ECCV 2008 (pp. 102-115). Springer Berlin Heidelberg.
+
 
 DenseFeatureDetector
 --------------------

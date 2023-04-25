@@ -1,6 +1,19 @@
 #include "opencv2/core/core.hpp"
 #include "opencv2/core/internal.hpp"
 
+using cv::Size;
+using cv::Mat;
+using cv::Point;
+using cv::FileStorage;
+using cv::Rect;
+using cv::Ptr;
+using cv::FileNode;
+using cv::Mat_;
+using cv::Range;
+using cv::FileNodeIterator;
+using cv::ParallelLoopBody;
+
+
 #include "boost.h"
 #include "cascadeclassifier.h"
 #include <queue>
@@ -160,10 +173,10 @@ CvCascadeBoostParams::CvCascadeBoostParams( int _boostType,
 
 void CvCascadeBoostParams::write( FileStorage &fs ) const
 {
-    String boostTypeStr = boost_type == CvBoost::DISCRETE ? CC_DISCRETE_BOOST :
+    string boostTypeStr = boost_type == CvBoost::DISCRETE ? CC_DISCRETE_BOOST :
                           boost_type == CvBoost::REAL ? CC_REAL_BOOST :
                           boost_type == CvBoost::LOGIT ? CC_LOGIT_BOOST :
-                          boost_type == CvBoost::GENTLE ? CC_GENTLE_BOOST : String();
+                          boost_type == CvBoost::GENTLE ? CC_GENTLE_BOOST : string();
     CV_Assert( !boostTypeStr.empty() );
     fs << CC_BOOST_TYPE << boostTypeStr;
     fs << CC_MINHITRATE << minHitRate;
@@ -175,7 +188,7 @@ void CvCascadeBoostParams::write( FileStorage &fs ) const
 
 bool CvCascadeBoostParams::read( const FileNode &node )
 {
-    String boostTypeStr;
+    string boostTypeStr;
     FileNode rnode = node[CC_BOOST_TYPE];
     rnode >> boostTypeStr;
     boost_type = !boostTypeStr.compare( CC_DISCRETE_BOOST ) ? CvBoost::DISCRETE :
@@ -213,10 +226,10 @@ void CvCascadeBoostParams::printDefaults() const
 
 void CvCascadeBoostParams::printAttrs() const
 {
-    String boostTypeStr = boost_type == CvBoost::DISCRETE ? CC_DISCRETE_BOOST :
+    string boostTypeStr = boost_type == CvBoost::DISCRETE ? CC_DISCRETE_BOOST :
                           boost_type == CvBoost::REAL ? CC_REAL_BOOST :
                           boost_type == CvBoost::LOGIT  ? CC_LOGIT_BOOST :
-                          boost_type == CvBoost::GENTLE ? CC_GENTLE_BOOST : String();
+                          boost_type == CvBoost::GENTLE ? CC_GENTLE_BOOST : string();
     CV_Assert( !boostTypeStr.empty() );
     cout << "boostType: " << boostTypeStr << endl;
     cout << "minHitRate: " << minHitRate << endl;
@@ -226,7 +239,7 @@ void CvCascadeBoostParams::printAttrs() const
     cout << "maxWeakCount: " << weak_count << endl;
 }
 
-bool CvCascadeBoostParams::scanAttr( const String prmName, const String val)
+bool CvCascadeBoostParams::scanAttr( const string prmName, const string val)
 {
     bool res = true;
 
@@ -361,7 +374,7 @@ CvDTreeNode* CvCascadeBoostTrainData::subsample_data( const CvMat* _subsample_id
             if (is_buf_16u)
             {
                 unsigned short* udst_idx = (unsigned short*)(buf->data.s + root->buf_idx*get_length_subbuf() +
-                    vi*sample_count + data_root->offset);
+                    (size_t)vi*sample_count + data_root->offset);
                 for( int i = 0; i < num_valid; i++ )
                 {
                     idx = src_idx[i];
@@ -374,7 +387,7 @@ CvDTreeNode* CvCascadeBoostTrainData::subsample_data( const CvMat* _subsample_id
             else
             {
                 int* idst_idx = buf->data.i + root->buf_idx*get_length_subbuf() +
-                    vi*sample_count + root->offset;
+                    (size_t)vi*sample_count + root->offset;
                 for( int i = 0; i < num_valid; i++ )
                 {
                     idx = src_idx[i];
@@ -391,14 +404,14 @@ CvDTreeNode* CvCascadeBoostTrainData::subsample_data( const CvMat* _subsample_id
         if (is_buf_16u)
         {
             unsigned short* udst = (unsigned short*)(buf->data.s + root->buf_idx*get_length_subbuf() +
-                (workVarCount-1)*sample_count + root->offset);
+                (size_t)(workVarCount-1)*sample_count + root->offset);
             for( int i = 0; i < count; i++ )
                 udst[i] = (unsigned short)src_lbls[sidx[i]];
         }
         else
         {
             int* idst = buf->data.i + root->buf_idx*get_length_subbuf() +
-                (workVarCount-1)*sample_count + root->offset;
+                (size_t)(workVarCount-1)*sample_count + root->offset;
             for( int i = 0; i < count; i++ )
                 idst[i] = src_lbls[sidx[i]];
         }
@@ -408,14 +421,14 @@ CvDTreeNode* CvCascadeBoostTrainData::subsample_data( const CvMat* _subsample_id
         if (is_buf_16u)
         {
             unsigned short* sample_idx_dst = (unsigned short*)(buf->data.s + root->buf_idx*get_length_subbuf() +
-                workVarCount*sample_count + root->offset);
+                (size_t)workVarCount*sample_count + root->offset);
             for( int i = 0; i < count; i++ )
                 sample_idx_dst[i] = (unsigned short)sample_idx_src[sidx[i]];
         }
         else
         {
             int* sample_idx_dst = buf->data.i + root->buf_idx*get_length_subbuf() +
-                workVarCount*sample_count + root->offset;
+                (size_t)workVarCount*sample_count + root->offset;
             for( int i = 0; i < count; i++ )
                 sample_idx_dst[i] = sample_idx_src[sidx[i]];
         }
@@ -601,9 +614,9 @@ void CvCascadeBoostTrainData::setData( const CvFeatureEvaluator* _featureEvaluat
 
     // set sample labels
     if (is_buf_16u)
-        udst = (unsigned short*)(buf->data.s + work_var_count*sample_count);
+        udst = (unsigned short*)(buf->data.s + (size_t)work_var_count*sample_count);
     else
-        idst = buf->data.i + work_var_count*sample_count;
+        idst = buf->data.i + (size_t)work_var_count*sample_count;
 
     for (int si = 0; si < sample_count; si++)
     {
@@ -671,11 +684,11 @@ void CvCascadeBoostTrainData::get_ord_var_data( CvDTreeNode* n, int vi, float* o
     if ( vi < numPrecalcIdx )
     {
         if( !is_buf_16u )
-            *sortedIndices = buf->data.i + n->buf_idx*get_length_subbuf() + vi*sample_count + n->offset;
+            *sortedIndices = buf->data.i + n->buf_idx*get_length_subbuf() + (size_t)vi*sample_count + n->offset;
         else
         {
             const unsigned short* shortIndices = (const unsigned short*)(buf->data.s + n->buf_idx*get_length_subbuf() +
-                                                    vi*sample_count + n->offset );
+                                                    (size_t)vi*sample_count + n->offset );
             for( int i = 0; i < nodeSampleCount; i++ )
                 sortedIndicesBuf[i] = shortIndices[i];
 
@@ -766,7 +779,7 @@ float CvCascadeBoostTrainData::getVarValue( int vi, int si )
 }
 
 
-struct FeatureIdxOnlyPrecalc
+struct FeatureIdxOnlyPrecalc : ParallelLoopBody
 {
     FeatureIdxOnlyPrecalc( const CvFeatureEvaluator* _featureEvaluator, CvMat* _buf, int _sample_count, bool _is_buf_16u )
     {
@@ -776,24 +789,24 @@ struct FeatureIdxOnlyPrecalc
         idst = _buf->data.i;
         is_buf_16u = _is_buf_16u;
     }
-    void operator()( const BlockedRange& range ) const
+    void operator()( const Range& range ) const
     {
         cv::AutoBuffer<float> valCache(sample_count);
         float* valCachePtr = (float*)valCache;
-        for ( int fi = range.begin(); fi < range.end(); fi++)
+        for ( int fi = range.start; fi < range.end; fi++)
         {
             for( int si = 0; si < sample_count; si++ )
             {
                 valCachePtr[si] = (*featureEvaluator)( fi, si );
                 if ( is_buf_16u )
-                    *(udst + fi*sample_count + si) = (unsigned short)si;
+                    *(udst + (size_t)fi*sample_count + si) = (unsigned short)si;
                 else
-                    *(idst + fi*sample_count + si) = si;
+                    *(idst + (size_t)fi*sample_count + si) = si;
             }
             if ( is_buf_16u )
-                icvSortUShAux( udst + fi*sample_count, sample_count, valCachePtr );
+                icvSortUShAux( udst + (size_t)fi*sample_count, sample_count, valCachePtr );
             else
-                icvSortIntAux( idst + fi*sample_count, sample_count, valCachePtr );
+                icvSortIntAux( idst + (size_t)fi*sample_count, sample_count, valCachePtr );
         }
     }
     const CvFeatureEvaluator* featureEvaluator;
@@ -803,7 +816,7 @@ struct FeatureIdxOnlyPrecalc
     bool is_buf_16u;
 };
 
-struct FeatureValAndIdxPrecalc
+struct FeatureValAndIdxPrecalc : ParallelLoopBody
 {
     FeatureValAndIdxPrecalc( const CvFeatureEvaluator* _featureEvaluator, CvMat* _buf, Mat* _valCache, int _sample_count, bool _is_buf_16u )
     {
@@ -814,22 +827,22 @@ struct FeatureValAndIdxPrecalc
         idst = _buf->data.i;
         is_buf_16u = _is_buf_16u;
     }
-    void operator()( const BlockedRange& range ) const
+    void operator()( const Range& range ) const
     {
-        for ( int fi = range.begin(); fi < range.end(); fi++)
+        for ( int fi = range.start; fi < range.end; fi++)
         {
             for( int si = 0; si < sample_count; si++ )
             {
                 valCache->at<float>(fi,si) = (*featureEvaluator)( fi, si );
                 if ( is_buf_16u )
-                    *(udst + fi*sample_count + si) = (unsigned short)si;
+                    *(udst + (size_t)fi*sample_count + si) = (unsigned short)si;
                 else
-                    *(idst + fi*sample_count + si) = si;
+                    *(idst + (size_t)fi*sample_count + si) = si;
             }
             if ( is_buf_16u )
-                icvSortUShAux( udst + fi*sample_count, sample_count, valCache->ptr<float>(fi) );
+                icvSortUShAux( udst + (size_t)fi*sample_count, sample_count, valCache->ptr<float>(fi) );
             else
-                icvSortIntAux( idst + fi*sample_count, sample_count, valCache->ptr<float>(fi) );
+                icvSortIntAux( idst + (size_t)fi*sample_count, sample_count, valCache->ptr<float>(fi) );
         }
     }
     const CvFeatureEvaluator* featureEvaluator;
@@ -840,7 +853,7 @@ struct FeatureValAndIdxPrecalc
     bool is_buf_16u;
 };
 
-struct FeatureValOnlyPrecalc
+struct FeatureValOnlyPrecalc : ParallelLoopBody
 {
     FeatureValOnlyPrecalc( const CvFeatureEvaluator* _featureEvaluator, Mat* _valCache, int _sample_count )
     {
@@ -848,9 +861,9 @@ struct FeatureValOnlyPrecalc
         valCache = _valCache;
         sample_count = _sample_count;
     }
-    void operator()( const BlockedRange& range ) const
+    void operator()( const Range& range ) const
     {
-        for ( int fi = range.begin(); fi < range.end(); fi++)
+        for ( int fi = range.start; fi < range.end; fi++)
             for( int si = 0; si < sample_count; si++ )
                 valCache->at<float>(fi,si) = (*featureEvaluator)( fi, si );
     }
@@ -864,12 +877,12 @@ void CvCascadeBoostTrainData::precalculate()
     int minNum = MIN( numPrecalcVal, numPrecalcIdx);
 
     double proctime = -TIME( 0 );
-    parallel_for( BlockedRange(numPrecalcVal, numPrecalcIdx),
-                  FeatureIdxOnlyPrecalc(featureEvaluator, buf, sample_count, is_buf_16u!=0) );
-    parallel_for( BlockedRange(0, minNum),
-                  FeatureValAndIdxPrecalc(featureEvaluator, buf, &valCache, sample_count, is_buf_16u!=0) );
-    parallel_for( BlockedRange(minNum, numPrecalcVal),
-                  FeatureValOnlyPrecalc(featureEvaluator, &valCache, sample_count) );
+    parallel_for_( Range(numPrecalcVal, numPrecalcIdx),
+                   FeatureIdxOnlyPrecalc(featureEvaluator, buf, sample_count, is_buf_16u!=0) );
+    parallel_for_( Range(0, minNum),
+                   FeatureValAndIdxPrecalc(featureEvaluator, buf, &valCache, sample_count, is_buf_16u!=0) );
+    parallel_for_( Range(minNum, numPrecalcVal),
+                   FeatureValOnlyPrecalc(featureEvaluator, &valCache, sample_count) );
     cout << "Precalculation time: " << (proctime + TIME( 0 )) << endl;
 }
 
@@ -1152,9 +1165,9 @@ void CvCascadeBoostTree::split_node_data( CvDTreeNode* node )
     if (data->is_buf_16u)
     {
         unsigned short *ldst = (unsigned short *)(buf->data.s + left->buf_idx*length_buf_row +
-            (workVarCount-1)*scount + left->offset);
+            (size_t)(workVarCount-1)*scount + left->offset);
         unsigned short *rdst = (unsigned short *)(buf->data.s + right->buf_idx*length_buf_row +
-            (workVarCount-1)*scount + right->offset);
+            (size_t)(workVarCount-1)*scount + right->offset);
 
         for( int i = 0; i < n; i++ )
         {
@@ -1175,9 +1188,9 @@ void CvCascadeBoostTree::split_node_data( CvDTreeNode* node )
     else
     {
         int *ldst = buf->data.i + left->buf_idx*length_buf_row +
-            (workVarCount-1)*scount + left->offset;
+            (size_t)(workVarCount-1)*scount + left->offset;
         int *rdst = buf->data.i + right->buf_idx*length_buf_row +
-            (workVarCount-1)*scount + right->offset;
+            (size_t)(workVarCount-1)*scount + right->offset;
 
         for( int i = 0; i < n; i++ )
         {
@@ -1205,9 +1218,9 @@ void CvCascadeBoostTree::split_node_data( CvDTreeNode* node )
     if (data->is_buf_16u)
     {
         unsigned short* ldst = (unsigned short*)(buf->data.s + left->buf_idx*length_buf_row +
-            workVarCount*scount + left->offset);
+            (size_t)workVarCount*scount + left->offset);
         unsigned short* rdst = (unsigned short*)(buf->data.s + right->buf_idx*length_buf_row +
-            workVarCount*scount + right->offset);
+            (size_t)workVarCount*scount + right->offset);
         for (int i = 0; i < n; i++)
         {
             unsigned short idx = (unsigned short)tempBuf[i];
@@ -1226,9 +1239,9 @@ void CvCascadeBoostTree::split_node_data( CvDTreeNode* node )
     else
     {
         int* ldst = buf->data.i + left->buf_idx*length_buf_row +
-            workVarCount*scount + left->offset;
+            (size_t)workVarCount*scount + left->offset;
         int* rdst = buf->data.i + right->buf_idx*length_buf_row +
-            workVarCount*scount + right->offset;
+            (size_t)workVarCount*scount + right->offset;
         for (int i = 0; i < n; i++)
         {
             int idx = tempBuf[i];
@@ -1397,7 +1410,7 @@ void CvCascadeBoost::update_weights( CvBoostTree* tree )
         if (data->is_buf_16u)
         {
             unsigned short* labels = (unsigned short*)(buf->data.s + data->data_root->buf_idx*length_buf_row +
-                data->data_root->offset + (data->work_var_count-1)*data->sample_count);
+                data->data_root->offset + (size_t)(data->work_var_count-1)*data->sample_count);
             for( int i = 0; i < n; i++ )
             {
                 // save original categorical responses {0,1}, convert them to {-1,1}
@@ -1415,7 +1428,7 @@ void CvCascadeBoost::update_weights( CvBoostTree* tree )
         else
         {
             int* labels = buf->data.i + data->data_root->buf_idx*length_buf_row +
-                data->data_root->offset + (data->work_var_count-1)*data->sample_count;
+                data->data_root->offset + (size_t)(data->work_var_count-1)*data->sample_count;
 
             for( int i = 0; i < n; i++ )
             {

@@ -1,10 +1,22 @@
-#include "opencv2/calib3d/calib3d.hpp"
-#include "opencv2/features2d/features2d.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/nonfree/nonfree.hpp"
-
+#include "opencv2/opencv_modules.hpp"
 #include <cstdio>
+
+#ifndef HAVE_OPENCV_NONFREE
+
+int main(int, char**)
+{
+    printf("The sample requires nonfree module that is not available in your OpenCV distribution.\n");
+    return -1;
+}
+
+#else
+
+# include "opencv2/opencv_modules.hpp"
+# include "opencv2/calib3d/calib3d.hpp"
+# include "opencv2/features2d/features2d.hpp"
+# include "opencv2/highgui/highgui.hpp"
+# include "opencv2/imgproc/imgproc.hpp"
+# include "opencv2/nonfree/nonfree.hpp"
 
 using namespace cv;
 
@@ -79,7 +91,7 @@ Mat DrawCorrespondences(const Mat& img1, const vector<KeyPoint>& features1, cons
 
     for (size_t i = 0; i < features1.size(); i++)
     {
-        circle(img_corr, features1[i].pt, 3, CV_RGB(255, 0, 0));
+        circle(img_corr, features1[i].pt, 3, Scalar(0, 0, 255));
     }
 
     for (size_t i = 0; i < features2.size(); i++)
@@ -91,3 +103,5 @@ Mat DrawCorrespondences(const Mat& img1, const vector<KeyPoint>& features1, cons
 
     return img_corr;
 }
+
+#endif

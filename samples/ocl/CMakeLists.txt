@@ -1,7 +1,6 @@
 SET(OPENCV_OCL_SAMPLES_REQUIRED_DEPS opencv_core opencv_flann opencv_imgproc opencv_highgui
                                      opencv_ml opencv_video opencv_objdetect opencv_features2d
-                                     opencv_calib3d opencv_legacy opencv_contrib opencv_ocl
-                                     opencv_nonfree)
+                                     opencv_calib3d opencv_legacy opencv_contrib opencv_ocl)
 
 ocv_check_dependencies(${OPENCV_OCL_SAMPLES_REQUIRED_DEPS})
 
@@ -11,14 +10,10 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
 
   project("${project}_samples")
 
-  ocv_include_modules(${OPENCV_OCL_SAMPLES_REQUIRED_DEPS})
+  ocv_include_modules(${OPENCV_OCL_SAMPLES_REQUIRED_DEPS} opencv_nonfree)
 
   if(HAVE_OPENCL)
     ocv_include_directories(${OPENCL_INCLUDE_DIR})
-  endif()
-
-  if(CMAKE_COMPILER_IS_GNUCXX AND NOT ENABLE_NOISY_WARNINGS)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
   endif()
 
   # ---------------------------------------------
@@ -31,7 +26,7 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
     target_link_libraries(${the_target} ${OPENCV_LINKER_LIBS} ${OPENCV_OCL_SAMPLES_REQUIRED_DEPS})
 
     set_target_properties(${the_target} PROPERTIES
-      OUTPUT_NAME "${name}_${project}"
+      OUTPUT_NAME "${project}-example-${name}"
       PROJECT_LABEL "(EXAMPLE_${project_upper}) ${name}")
 
     if(ENABLE_SOLUTION_FOLDERS)
@@ -42,7 +37,7 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
       if(MSVC AND NOT BUILD_SHARED_LIBS)
         set_target_properties(${the_target} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:atlthunk.lib /NODEFAULTLIB:atlsd.lib /DEBUG")
       endif()
-      install(TARGETS ${the_target} RUNTIME DESTINATION "samples/${project}" COMPONENT main)
+      install(TARGETS ${the_target} RUNTIME DESTINATION "${OPENCV_SAMPLES_BIN_INSTALL_PATH}/${project}" COMPONENT samples)
     endif()
   ENDMACRO()
 
@@ -55,10 +50,9 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
   endforeach()
 endif()
 
-if (INSTALL_C_EXAMPLES AND NOT WIN32)
-  file(GLOB install_list *.c *.cpp *.jpg *.png *.data makefile.* build_all.sh *.dsp *.cmd )
+if (OCV_DEPENDENCIES_FOUND AND INSTALL_C_EXAMPLES AND NOT WIN32)
+  file(GLOB install_list *.c *.cpp *.jpg *.png *.data makefile.* *.txt)
   install(FILES ${install_list}
-          DESTINATION share/opencv/samples/${project}
-          PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+          DESTINATION "${OPENCV_SAMPLES_SRC_INSTALL_PATH}/ocl"
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ COMPONENT samples)
 endif()
-

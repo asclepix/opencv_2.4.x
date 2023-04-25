@@ -22,6 +22,10 @@ OpenCV enables you to specify the extrapolation method. For details, see the fun
     * BORDER_CONSTANT:      iiiiii|abcdefgh|iiiiiii  with some specified 'i'
     */
 
+.. note::
+
+   * (Python) A complete example illustrating different morphological operations like erode/dilate, open/close, blackhat/tophat ... can be found at opencv_source_code/samples/python2/morphology.py
+
 BaseColumnFilter
 ----------------
 .. ocv:class:: BaseColumnFilter
@@ -408,6 +412,27 @@ http://www.dai.ed.ac.uk/CVonline/LOCAL\_COPIES/MANDUCHI1/Bilateral\_Filtering.ht
 This filter does not work inplace.
 
 
+adaptiveBilateralFilter
+-----------------------
+Applies the adaptive bilateral filter to an image.
+
+.. ocv:function:: void adaptiveBilateralFilter( InputArray src, OutputArray dst, Size ksize, double sigmaSpace, double maxSigmaColor = 20.0, Point anchor=Point(-1, -1), int borderType=BORDER_DEFAULT )
+
+.. ocv:pyfunction:: cv2.adaptiveBilateralFilter(src, ksize, sigmaSpace[, dst[, maxSigmaColor[, anchor[, borderType]]]]) -> dst
+
+    :param src: The source image
+
+    :param dst: The destination image; will have the same size and the same type as src
+
+    :param ksize: The kernel size. This is the neighborhood where the local variance will be calculated, and where pixels will contribute (in a weighted manner).
+
+    :param sigmaSpace: Filter sigma in the coordinate space. Larger value of the parameter means that farther pixels will influence each other (as long as their colors are close enough; see sigmaColor). Then d>0, it specifies the neighborhood size regardless of sigmaSpace, otherwise d is proportional to sigmaSpace.
+
+    :param maxSigmaColor: Maximum allowed sigma color (will clamp the value calculated in the ksize neighborhood. Larger value of the parameter means that more dissimilar pixels will influence each other (as long as their colors are close enough; see sigmaColor). Then d>0, it specifies the neighborhood size regardless of sigmaSpace, otherwise d is proportional to sigmaSpace.
+
+    :param borderType: Pixel extrapolation method.
+
+A main part of our strategy will be to load each raw pixel once, and reuse it to calculate all pixels in the output (filtered) image that need this pixel value. The math of the filter is that of the usual bilateral filter, except that the sigma color is calculated in the neighborhood, and clamped by the optional input value.
 
 
 blur
@@ -532,6 +557,8 @@ Constructs the Gaussian pyramid for an image.
     :param dst: Destination vector of  ``maxlevel+1``  images of the same type as  ``src`` . ``dst[0]``  will be the same as  ``src`` .  ``dst[1]``  is the next pyramid layer, a smoothed and down-sized  ``src``  , and so on.
 
     :param maxlevel: 0-based index of the last (the smallest) pyramid layer. It must be non-negative.
+
+    :param borderType: Pixel extrapolation method (BORDER_CONSTANT don't supported). See  :ocv:func:`borderInterpolate` for details.
 
 The function constructs a vector of images and builds the Gaussian pyramid by recursively applying
 :ocv:func:`pyrDown` to the previously built pyramid layers, starting from ``dst[0]==src`` .
@@ -868,6 +895,9 @@ The function supports the in-place mode. Dilation can be applied several ( ``ite
     :ocv:func:`morphologyEx`,
     :ocv:func:`createMorphologyFilter`
 
+.. note::
+
+   * An example using the morphological dilate operation can be found at opencv_source_code/samples/cpp/morphology2.cpp
 
 erode
 -----
@@ -908,7 +938,9 @@ The function supports the in-place mode. Erosion can be applied several ( ``iter
     :ocv:func:`morphologyEx`,
     :ocv:func:`createMorphologyFilter`
 
+.. note::
 
+   * An example using the morphological erode operation can be found at opencv_source_code/samples/cpp/morphology2.cpp
 
 filter2D
 --------
@@ -1046,7 +1078,7 @@ The function computes and returns the
 
 .. math::
 
-    G_i= \alpha *e^{-(i-( \texttt{ksize} -1)/2)^2/(2* \texttt{sigma} )^2},
+    G_i= \alpha *e^{-(i-( \texttt{ksize} -1)/2)^2/(2* \texttt{sigma}^2 )},
 
 where
 :math:`i=0..\texttt{ksize}-1` and
@@ -1181,7 +1213,7 @@ Performs advanced morphological transformations.
 .. ocv:cfunction:: void cvMorphologyEx( const CvArr* src, CvArr* dst, CvArr* temp, IplConvKernel* element, int operation, int iterations=1 )
 .. ocv:pyoldfunction:: cv.MorphologyEx(src, dst, temp, element, operation, iterations=1)-> None
 
-    :param src: Source image. The number of channels can be arbitrary. The depth should be one of ``CV_8U``, ``CV_16U``, ``CV_16S``,  ``CV_32F` or ``CV_64F``.
+    :param src: Source image. The number of channels can be arbitrary. The depth should be one of ``CV_8U``, ``CV_16U``, ``CV_16S``,  ``CV_32F`` or ``CV_64F``.
 
     :param dst: Destination image of the same size and type as  ``src`` .
 
@@ -1198,6 +1230,8 @@ Performs advanced morphological transformations.
             * **MORPH_TOPHAT** - "top hat"
 
             * **MORPH_BLACKHAT** - "black hat"
+
+            * **MORPH_HITMISS** - "hit and miss"
 
     :param iterations: Number of times erosion and dilation are applied.
 
@@ -1237,6 +1271,8 @@ Morphological gradient:
 
     \texttt{dst} = \mathrm{blackhat} ( \texttt{src} , \texttt{element} )= \mathrm{close} ( \texttt{src} , \texttt{element} )- \texttt{src}
 
+"Hit and Miss": Only supported for CV_8UC1 binary images. Tutorial can be found in this page: http://opencv-code.com/tutorials/hit-or-miss-transform-in-opencv/
+
 Any of the operations can be done in-place. In case of multi-channel images, each channel is processed independently.
 
 .. seealso::
@@ -1245,6 +1281,9 @@ Any of the operations can be done in-place. In case of multi-channel images, eac
     :ocv:func:`erode`,
     :ocv:func:`createMorphologyFilter`
 
+.. note::
+
+   * An example using the morphologyEx function for the morphological opening and closing operations can be found at opencv_source_code/samples/cpp/morphology2.cpp
 
 Laplacian
 ---------
@@ -1290,7 +1329,9 @@ This is done when ``ksize > 1`` . When ``ksize == 1`` , the Laplacian is compute
     :ocv:func:`Sobel`,
     :ocv:func:`Scharr`
 
+.. note::
 
+   * An example using the Laplace transformation for edge detection can be found at opencv_source_code/samples/cpp/laplace.cpp
 
 pyrDown
 -------
@@ -1308,12 +1349,16 @@ Blurs an image and downsamples it.
 
     :param dst: output image; it has the specified size and the same type as ``src``.
 
-    :param dstsize: size of the output image; by default, it is computed as ``Size((src.cols+1)/2, (src.rows+1)/2)``, but in any case, the following conditions should be satisfied:
+    :param dstsize: size of the output image.
 
-        .. math::
+    :param borderType: Pixel extrapolation method (BORDER_CONSTANT don't supported). See  :ocv:func:`borderInterpolate` for details.
 
-            \begin{array}{l}
-            | \texttt{dstsize.width} *2-src.cols| \leq  2  \\ | \texttt{dstsize.height} *2-src.rows| \leq  2 \end{array}
+By default, size of the output image is computed as ``Size((src.cols+1)/2, (src.rows+1)/2)``, but in any case, the following conditions should be satisfied:
+
+.. math::
+
+    \begin{array}{l}
+    | \texttt{dstsize.width} *2-src.cols| \leq  2  \\ | \texttt{dstsize.height} *2-src.rows| \leq  2 \end{array}
 
 The function performs the downsampling step of the Gaussian pyramid construction. First, it convolves the source image with the kernel:
 
@@ -1322,8 +1367,6 @@ The function performs the downsampling step of the Gaussian pyramid construction
     \frac{1}{256} \begin{bmatrix} 1 & 4 & 6 & 4 & 1  \\ 4 & 16 & 24 & 16 & 4  \\ 6 & 24 & 36 & 24 & 6  \\ 4 & 16 & 24 & 16 & 4  \\ 1 & 4 & 6 & 4 & 1 \end{bmatrix}
 
 Then, it downsamples the image by rejecting even rows and columns.
-
-
 
 pyrUp
 -----
@@ -1341,15 +1384,23 @@ Upsamples an image and then blurs it.
 
     :param dst: output image. It has the specified size and the same type as  ``src`` .
 
-    :param dstsize: size of the output image; by default, it is computed as ``Size(src.cols*2, (src.rows*2)``, but in any case, the following conditions should be satisfied:
+    :param dstsize: size of the output image.
 
-        .. math::
+    :param borderType: Pixel extrapolation method (only BORDER_DEFAULT supported). See  :ocv:func:`borderInterpolate` for details.
 
-            \begin{array}{l}
-            | \texttt{dstsize.width} -src.cols*2| \leq  ( \texttt{dstsize.width}   \mod  2)  \\ | \texttt{dstsize.height} -src.rows*2| \leq  ( \texttt{dstsize.height}   \mod  2) \end{array}
+By default, size of the output image is computed as ``Size(src.cols*2, (src.rows*2)``, but in any case, the following conditions should be satisfied:
+
+.. math::
+
+    \begin{array}{l}
+    | \texttt{dstsize.width} -src.cols*2| \leq  ( \texttt{dstsize.width}   \mod  2)  \\ | \texttt{dstsize.height} -src.rows*2| \leq  ( \texttt{dstsize.height}   \mod  2) \end{array}
 
 The function performs the upsampling step of the Gaussian pyramid construction, though it can actually be used to construct the Laplacian pyramid. First, it upsamples the source image by injecting even zero rows and columns and then convolves the result with the same kernel as in
 :ocv:func:`pyrDown`  multiplied by 4.
+
+.. note::
+
+   * (Python) An example of Laplacian Pyramid construction and merging can be found at opencv_source_code/samples/python2/lappyr.py
 
 
 pyrMeanShiftFiltering
@@ -1400,6 +1451,9 @@ After the iterations over, the color components of the initial pixel (that is, t
 
 When ``maxLevel > 0``, the gaussian pyramid of ``maxLevel+1`` levels is built, and the above procedure is run on the smallest layer first. After that, the results are propagated to the larger layer and the iterations are run again only on those pixels where the layer colors differ by more than ``sr`` from the lower-resolution layer of the pyramid. That makes boundaries of color regions sharper. Note that the results will be actually different from the ones obtained by running the meanshift procedure on the whole original image (i.e. when ``maxLevel==0``).
 
+.. note::
+
+   * An example using mean-shift image segmentation can be found at opencv_source_code/samples/cpp/meanshift_segmentation.cpp
 
 sepFilter2D
 -----------
@@ -1425,7 +1479,7 @@ Applies a separable linear filter to an image.
 
     :param kernelY: Coefficients for filtering each column.
 
-    :param anchor: Anchor position within the kernel. The default value  :math:`(-1, 1)`  means that the anchor is at the kernel center.
+    :param anchor: Anchor position within the kernel. The default value  :math:`(-1,-1)`  means that the anchor is at the kernel center.
 
     :param delta: Value added to the filtered results before storing them.
 
@@ -1621,4 +1675,3 @@ is equivalent to
 .. seealso::
 
     :ocv:func:`cartToPolar`
-

@@ -1,113 +1,58 @@
+/*M///////////////////////////////////////////////////////////////////////////////////////
+//
+//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
+//
+//  By downloading, copying, installing or using the software you agree to this license.
+//  If you do not agree to this license, do not download, install,
+//  copy or use the software.
+//
+//
+//                           License Agreement
+//                For Open Source Computer Vision Library
+//
+// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
+// Copyright (C) 2009, Willow Garage Inc., all rights reserved.
+// Third party copyrights are property of their respective owners.
+//
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+//
+//   * Redistribution's of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   * Redistribution's in binary form must reproduce the above copyright notice,
+//     this list of conditions and the following disclaimer in the documentation
+//     and/or other materials provided with the distribution.
+//
+//   * The name of the copyright holders may not be used to endorse or promote products
+//     derived from this software without specific prior written permission.
+//
+// This software is provided by the copyright holders and contributors "as is" and
+// any express or implied warranties, including, but not limited to, the implied
+// warranties of merchantability and fitness for a particular purpose are disclaimed.
+// In no event shall the Intel Corporation or contributors be liable for any direct,
+// indirect, incidental, special, exemplary, or consequential damages
+// (including, but not limited to, procurement of substitute goods or services;
+// loss of use, data, or profits; or business interruption) however caused
+// and on any theory of liability, whether in contract, strict liability,
+// or tort (including negligence or otherwise) arising in any way out of
+// the use of this software, even if advised of the possibility of such damage.
+//
+//M*/
+
 #include "perf_precomp.hpp"
+#include "opencv2/ts/gpu_perf.hpp"
 
 using namespace std;
 using namespace testing;
-
-struct KeypointIdxCompare
-{
-    std::vector<cv::KeyPoint>* keypoints;
-
-    explicit KeypointIdxCompare(std::vector<cv::KeyPoint>* _keypoints) : keypoints(_keypoints) {}
-
-    bool operator ()(size_t i1, size_t i2) const
-    {
-        cv::KeyPoint kp1 = (*keypoints)[i1];
-        cv::KeyPoint kp2 = (*keypoints)[i2];
-        if (kp1.pt.x != kp2.pt.x)
-            return kp1.pt.x < kp2.pt.x;
-        if (kp1.pt.y != kp2.pt.y)
-            return kp1.pt.y < kp2.pt.y;
-        if (kp1.response != kp2.response)
-            return kp1.response < kp2.response;
-        return kp1.octave < kp2.octave;
-    }
-};
-
-static void sortKeyPoints(std::vector<cv::KeyPoint>& keypoints, cv::InputOutputArray _descriptors = cv::noArray())
-{
-    std::vector<size_t> indexies(keypoints.size());
-    for (size_t i = 0; i < indexies.size(); ++i)
-        indexies[i] = i;
-
-    std::sort(indexies.begin(), indexies.end(), KeypointIdxCompare(&keypoints));
-
-    std::vector<cv::KeyPoint> new_keypoints;
-    cv::Mat new_descriptors;
-
-    new_keypoints.resize(keypoints.size());
-
-    cv::Mat descriptors;
-    if (_descriptors.needed())
-    {
-        descriptors = _descriptors.getMat();
-        new_descriptors.create(descriptors.size(), descriptors.type());
-    }
-
-    for (size_t i = 0; i < indexies.size(); ++i)
-    {
-        size_t new_idx = indexies[i];
-        new_keypoints[i] = keypoints[new_idx];
-        if (!new_descriptors.empty())
-            descriptors.row((int) new_idx).copyTo(new_descriptors.row((int) i));
-    }
-
-    keypoints.swap(new_keypoints);
-    if (_descriptors.needed())
-        new_descriptors.copyTo(_descriptors);
-}
-
-//////////////////////////////////////////////////////////////////////
-// SURF
-
-DEF_PARAM_TEST_1(Image, string);
-
-PERF_TEST_P(Image, Features2D_SURF,
-            Values<string>("gpu/perf/aloe.png"))
-{
-    declare.time(50.0);
-
-    const cv::Mat img = readImage(GetParam(), cv::IMREAD_GRAYSCALE);
-    ASSERT_FALSE(img.empty());
-
-    if (PERF_RUN_GPU())
-    {
-        cv::gpu::SURF_GPU d_surf;
-
-        const cv::gpu::GpuMat d_img(img);
-        cv::gpu::GpuMat d_keypoints, d_descriptors;
-
-        TEST_CYCLE() d_surf(d_img, cv::gpu::GpuMat(), d_keypoints, d_descriptors);
-
-        std::vector<cv::KeyPoint> gpu_keypoints;
-        d_surf.downloadKeypoints(d_keypoints, gpu_keypoints);
-
-        cv::Mat gpu_descriptors(d_descriptors);
-
-        sortKeyPoints(gpu_keypoints, gpu_descriptors);
-
-        SANITY_CHECK_KEYPOINTS(gpu_keypoints);
-        SANITY_CHECK(gpu_descriptors, 1e-3);
-    }
-    else
-    {
-        cv::SURF surf;
-
-        std::vector<cv::KeyPoint> cpu_keypoints;
-        cv::Mat cpu_descriptors;
-
-        TEST_CYCLE() surf(img, cv::noArray(), cpu_keypoints, cpu_descriptors);
-
-        SANITY_CHECK_KEYPOINTS(cpu_keypoints);
-        SANITY_CHECK(cpu_descriptors);
-    }
-}
+using namespace perf;
 
 //////////////////////////////////////////////////////////////////////
 // FAST
 
-DEF_PARAM_TEST(Image_Threshold_NonMaxSupression, string, int, bool);
+DEF_PARAM_TEST(Image_Threshold_NonMaxSuppression, string, int, bool);
 
-PERF_TEST_P(Image_Threshold_NonMaxSupression, Features2D_FAST,
+PERF_TEST_P(Image_Threshold_NonMaxSuppression, Features2D_FAST,
             Combine(Values<string>("gpu/perf/aloe.png"),
                     Values(20),
                     Bool()))
@@ -153,6 +98,8 @@ PERF_TEST_P(Image_NFeatures, Features2D_ORB,
             Combine(Values<string>("gpu/perf/aloe.png"),
                     Values(4000)))
 {
+    declare.time(300.0);
+
     const cv::Mat img = readImage(GET_PARAM(0), cv::IMREAD_GRAYSCALE);
     ASSERT_FALSE(img.empty());
 
@@ -177,7 +124,7 @@ PERF_TEST_P(Image_NFeatures, Features2D_ORB,
 
         sortKeyPoints(gpu_keypoints, gpu_descriptors);
 
-        SANITY_CHECK_KEYPOINTS(gpu_keypoints);
+        SANITY_CHECK_KEYPOINTS(gpu_keypoints, 1e-10);
         SANITY_CHECK(gpu_descriptors);
     }
     else
@@ -199,9 +146,17 @@ PERF_TEST_P(Image_NFeatures, Features2D_ORB,
 
 DEF_PARAM_TEST(DescSize_Norm, int, NormType);
 
-PERF_TEST_P(DescSize_Norm, Features2D_BFMatch,
-            Combine(Values(64, 128, 256),
-                    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2), NormType(cv::NORM_HAMMING))))
+#ifdef OPENCV_TINY_GPU_MODULE
+PERF_TEST_P(DescSize_Norm, Features2D_BFMatch, Combine(
+    Values(64, 128, 256),
+    Values(NormType(cv::NORM_L2), NormType(cv::NORM_HAMMING))
+))
+#else
+PERF_TEST_P(DescSize_Norm, Features2D_BFMatch, Combine(
+    Values(64, 128, 256),
+    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2), NormType(cv::NORM_HAMMING))
+))
+#endif
 {
     declare.time(20.0);
 
@@ -256,10 +211,19 @@ static void toOneRowMatches(const std::vector< std::vector<cv::DMatch> >& src, s
 
 DEF_PARAM_TEST(DescSize_K_Norm, int, int, NormType);
 
-PERF_TEST_P(DescSize_K_Norm, Features2D_BFKnnMatch,
-            Combine(Values(64, 128, 256),
-                    Values(2, 3),
-                    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2))))
+#ifdef OPENCV_TINY_GPU_MODULE
+PERF_TEST_P(DescSize_K_Norm, Features2D_BFKnnMatch, Combine(
+    Values(64, 128, 256),
+    Values(2, 3),
+    Values(NormType(cv::NORM_L2))
+))
+#else
+PERF_TEST_P(DescSize_K_Norm, Features2D_BFKnnMatch, Combine(
+    Values(64, 128, 256),
+    Values(2, 3),
+    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2))
+))
+#endif
 {
     declare.time(30.0);
 
@@ -311,9 +275,17 @@ PERF_TEST_P(DescSize_K_Norm, Features2D_BFKnnMatch,
 //////////////////////////////////////////////////////////////////////
 // BFRadiusMatch
 
-PERF_TEST_P(DescSize_Norm, Features2D_BFRadiusMatch,
-            Combine(Values(64, 128, 256),
-                    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2))))
+#ifdef OPENCV_TINY_GPU_MODULE
+PERF_TEST_P(DescSize_Norm, Features2D_BFRadiusMatch, Combine(
+    Values(64, 128, 256),
+    Values(NormType(cv::NORM_L2))
+))
+#else
+PERF_TEST_P(DescSize_Norm, Features2D_BFRadiusMatch, Combine(
+    Values(64, 128, 256),
+    Values(NormType(cv::NORM_L1), NormType(cv::NORM_L2))
+))
+#endif
 {
     declare.time(30.0);
 

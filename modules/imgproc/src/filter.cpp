@@ -46,6 +46,12 @@
                                     Base Image Filter
 \****************************************************************************************/
 
+#if defined HAVE_IPP && IPP_VERSION_MAJOR*100 + IPP_VERSION_MINOR >= 701
+#define USE_IPP_SEP_FILTERS 1
+#else
+#undef USE_IPP_SEP_FILTERS
+#endif
+
 /*
  Various border types, image boundaries are denoted with '|'
 
@@ -447,8 +453,11 @@ void FilterEngine::apply(const Mat& src, Mat& dst,
         dstOfs.y + srcRoi.height <= dst.rows );
 
     int y = start(src, srcRoi, isolated);
-    proceed( src.data + y*src.step, (int)src.step, endY - startY,
-             dst.data + dstOfs.y*dst.step + dstOfs.x*dst.elemSize(), (int)dst.step );
+    proceed( src.data + y*src.step
+             + srcRoi.x*src.elemSize(),
+             (int)src.step, endY - startY,
+             dst.data + dstOfs.y*dst.step +
+             dstOfs.x*dst.elemSize(), (int)dst.step );
 }
 
 }
@@ -1445,21 +1454,53 @@ struct RowVec_32f
     RowVec_32f( const Mat& _kernel )
     {
         kernel = _kernel;
+        haveSSE = checkHardwareSupport(CV_CPU_SSE);
+#ifdef USE_IPP_SEP_FILTERS
+        bufsz = -1;
+#endif
     }
 
     int operator()(const uchar* _src, uchar* _dst, int width, int cn) const
     {
-        if( !checkHardwareSupport(CV_CPU_SSE) )
-            return 0;
-
-        int i = 0, k, _ksize = kernel.rows + kernel.cols - 1;
+        int _ksize = kernel.rows + kernel.cols - 1;
+        const float* src0 = (const float*)_src;
         float* dst = (float*)_dst;
         const float* _kx = (const float*)kernel.data;
+
+#ifdef USE_IPP_SEP_FILTERS
+        IppiSize roisz = { width, 1 };
+        if( (cn == 1 || cn == 3) && width >= _ksize*8 )
+        {
+            if( bufsz < 0 )
+            {
+                if( (cn == 1 && ippiFilterRowBorderPipelineGetBufferSize_32f_C1R(roisz, _ksize, &bufsz) < 0) ||
+                    (cn == 3 && ippiFilterRowBorderPipelineGetBufferSize_32f_C3R(roisz, _ksize, &bufsz) < 0))
+                    return 0;
+            }
+            AutoBuffer<uchar> buf(bufsz + 64);
+            uchar* bufptr = alignPtr((uchar*)buf, 32);
+            int step = (int)(width*sizeof(dst[0])*cn);
+            float borderValue[] = {0.f, 0.f, 0.f};
+            // here is the trick. IPP needs border type and extrapolates the row. We did it already.
+            // So we pass anchor=0 and ignore the right tail of results since they are incorrect there.
+            if( (cn == 1 && ippiFilterRowBorderPipeline_32f_C1R(src0, step, &dst, roisz, _kx, _ksize, 0,
+                                                                ippBorderRepl, borderValue[0], bufptr) < 0) ||
+                (cn == 3 && ippiFilterRowBorderPipeline_32f_C3R(src0, step, &dst, roisz, _kx, _ksize, 0,
+                                                                ippBorderRepl, borderValue, bufptr) < 0))
+                return 0;
+            return width - _ksize + 1;
+        }
+#endif
+
+        if( !haveSSE )
+            return 0;
+
+        int i = 0, k;
         width *= cn;
 
         for( ; i <= width - 8; i += 8 )
         {
-            const float* src = (const float*)_src + i;
+            const float* src = src0 + i;
             __m128 f, s0 = _mm_setzero_ps(), s1 = s0, x0, x1;
             for( k = 0; k < _ksize; k++, src += cn )
             {
@@ -1478,6 +1519,10 @@ struct RowVec_32f
     }
 
     Mat kernel;
+    bool haveSSE;
+#ifdef USE_IPP_SEP_FILTERS
+    mutable int bufsz;
+#endif
 };
 
 
@@ -2590,9 +2635,9 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
         const ST* ky = (const ST*)this->kernel.data + ksize2;
         int i;
         bool symmetrical = (this->symmetryType & KERNEL_SYMMETRICAL) != 0;
-        bool is_1_2_1 = ky[0] == 1 && ky[1] == 2;
-        bool is_1_m2_1 = ky[0] == 1 && ky[1] == -2;
-        bool is_m1_0_1 = ky[1] == 1 || ky[1] == -1;
+        bool is_1_2_1 = ky[0] == 2 && ky[1] == 1;
+        bool is_1_m2_1 = ky[0] == -2 && ky[1] == 1;
+        bool is_m1_0_1 = (ky[1] == 1 || ky[1] == -1) && ky[1] == -ky[-1] && ky[0] == 0;
         ST f0 = ky[0], f1 = ky[1];
         ST _delta = this->delta;
         CastOp castOp = this->castOp0;
@@ -2623,13 +2668,12 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
                         D[i+2] = castOp(s0);
                         D[i+3] = castOp(s1);
                     }
-                    #else
+                    #endif
                     for( ; i < width; i ++ )
                     {
                         ST s0 = S0[i] + S1[i]*2 + S2[i] + _delta;
                         D[i] = castOp(s0);
                     }
-                    #endif
                 }
                 else if( is_1_m2_1 )
                 {
@@ -2646,13 +2690,12 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
                         D[i+2] = castOp(s0);
                         D[i+3] = castOp(s1);
                     }
-                    #else
+                    #endif
                     for( ; i < width; i ++ )
                     {
                         ST s0 = S0[i] - S1[i]*2 + S2[i] + _delta;
                         D[i] = castOp(s0);
                     }
-                    #endif
                 }
                 else
                 {
@@ -2669,13 +2712,12 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
                         D[i+2] = castOp(s0);
                         D[i+3] = castOp(s1);
                     }
-                    #else
+                    #endif
                     for( ; i < width; i ++ )
                     {
                         ST s0 = (S0[i] + S2[i])*f1 + S1[i]*f0 + _delta;
                         D[i] = castOp(s0);
                     }
-                    #endif
                 }
                 for( ; i < width; i++ )
                     D[i] = castOp((S0[i] + S2[i])*f1 + S1[i]*f0 + _delta);
@@ -2699,17 +2741,14 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
                         D[i+2] = castOp(s0);
                         D[i+3] = castOp(s1);
                     }
-                    #else
+                    #endif
                     for( ; i < width; i ++ )
                     {
                         ST s0 = S2[i] - S0[i] + _delta;
                         D[i] = castOp(s0);
                     }
-                    #endif
-                    if( f1 < 0 )
-                        std::swap(S0, S2);
                 }
-                else
+                else if( ky[0] == 0 )
                 {
                    #if CV_ENABLE_UNROLLED
                     for( ; i <= width - 4; i += 4 )
@@ -2725,10 +2764,29 @@ struct SymmColumnSmallFilter : public SymmColumnFilter<CastOp, VecOp>
                         D[i+3] = castOp(s1);
                     }
                     #endif
+                    for( ; i < width; i++ )
+                        D[i] = castOp((S2[i] - S0[i])*f1 + _delta);
+                }
+                else
+                {
+                   #if CV_ENABLE_UNROLLED
+                    for( ; i <= width - 4; i += 4 )
+                    {
+                        ST s0 = (S2[i] - S0[i])*f1 + S1[i]*f0 + _delta;
+                        ST s1 = (S2[i+1] - S0[i+1])*f1 + S1[i+1]*f0 + _delta;
+                        D[i] = castOp(s0);
+                        D[i+1] = castOp(s1);
+
+                        s0 = (S2[i+2] - S0[i+2])*f1 + S1[i+2]*f0 + _delta;
+                        s1 = (S2[i+3] - S0[i+3])*f1 + S1[i+2]*f0 + _delta;
+                        D[i+2] = castOp(s0);
+                        D[i+3] = castOp(s1);
+                    }
+                    #endif
+                    for( ; i < width; i++ )
+                        D[i] = castOp((S2[i] - S0[i])*f1 + S1[i]*f0 + _delta);
                 }
 
-                for( ; i < width; i++ )
-                    D[i] = castOp((S2[i] - S0[i])*f1 + _delta);
             }
         }
     }

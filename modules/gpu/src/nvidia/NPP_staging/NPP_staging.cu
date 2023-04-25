@@ -1,6 +1,6 @@
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
-// IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
+//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
 //
 //  By downloading, copying, installing or using the software you agree to this license.
 //  If you do not agree to this license, do not download, install,
@@ -10,7 +10,8 @@
 //                           License Agreement
 //                For Open Source Computer Vision Library
 //
-// Copyright (C) 2009-2010, NVIDIA Corporation, all rights reserved.
+// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
+// Copyright (C) 2009, Willow Garage Inc., all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -279,7 +280,8 @@ __global__ void scanRows(T_in *d_src, Ncv32u texOffs, Ncv32u srcWidth, Ncv32u sr
 
     __shared__ T_out shmem[NUM_SCAN_THREADS * 2];
     __shared__ T_out carryElem;
-    carryElem = 0;
+    if (threadIdx.x == 0)
+        carryElem = 0;
     __syncthreads();
 
     while (numBuckets--)
@@ -287,7 +289,7 @@ __global__ void scanRows(T_in *d_src, Ncv32u texOffs, Ncv32u srcWidth, Ncv32u sr
         Ncv32u curElemOffs = offsetX + threadIdx.x;
         T_out curScanElem;
 
-        T_in curElem;
+        T_in curElem = 0;
         T_out curElemMod;
 
         if (curElemOffs < srcWidth)

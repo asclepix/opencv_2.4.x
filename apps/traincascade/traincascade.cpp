@@ -5,17 +5,19 @@
 #include "cascadeclassifier.h"
 
 using namespace std;
+using namespace cv;
 
 int main( int argc, char* argv[] )
 {
     CvCascadeClassifier classifier;
-    String cascadeDirName, vecName, bgName;
+    string cascadeDirName, vecName, bgName;
     int numPos    = 2000;
     int numNeg    = 1000;
     int numStages = 20;
-    int precalcValBufSize = 256,
-        precalcIdxBufSize = 256;
+    int precalcValBufSize = 1024,
+        precalcIdxBufSize = 1024;
     bool baseFormatSave = false;
+    double acceptanceRatioBreakValue = -1.0;
 
     CvCascadeParams cascadeParams;
     CvCascadeBoostParams stageParams;
@@ -36,6 +38,7 @@ int main( int argc, char* argv[] )
         cout << "  [-precalcValBufSize <precalculated_vals_buffer_size_in_Mb = " << precalcValBufSize << ">]" << endl;
         cout << "  [-precalcIdxBufSize <precalculated_idxs_buffer_size_in_Mb = " << precalcIdxBufSize << ">]" << endl;
         cout << "  [-baseFormatSave]" << endl;
+        cout << "  [-acceptanceRatioBreakValue <value> = " << acceptanceRatioBreakValue << ">]" << endl;
         cascadeParams.printDefaults();
         stageParams.printDefaults();
         for( int fi = 0; fi < fc; fi++ )
@@ -82,6 +85,10 @@ int main( int argc, char* argv[] )
         {
             baseFormatSave = true;
         }
+        else if( !strcmp( argv[i], "-acceptanceRatioBreakValue" ) )
+        {
+            acceptanceRatioBreakValue = atof(argv[++i]);
+        }
         else if ( cascadeParams.scanAttr( argv[i], argv[i+1] ) ) { i++; }
         else if ( stageParams.scanAttr( argv[i], argv[i+1] ) ) { i++; }
         else if ( !set )
@@ -107,6 +114,7 @@ int main( int argc, char* argv[] )
                       cascadeParams,
                       *featureParams[cascadeParams.featureType],
                       stageParams,
-                      baseFormatSave );
+                      baseFormatSave,
+                      acceptanceRatioBreakValue );
     return 0;
 }

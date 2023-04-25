@@ -1,3 +1,45 @@
+/*M///////////////////////////////////////////////////////////////////////////////////////
+//
+//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
+//
+//  By downloading, copying, installing or using the software you agree to this license.
+//  If you do not agree to this license, do not download, install,
+//  copy or use the software.
+//
+//
+//                           License Agreement
+//                For Open Source Computer Vision Library
+//
+// Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
+// Copyright (C) 2009, Willow Garage Inc., all rights reserved.
+// Third party copyrights are property of their respective owners.
+//
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+//
+//   * Redistribution's of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   * Redistribution's in binary form must reproduce the above copyright notice,
+//     this list of conditions and the following disclaimer in the documentation
+//     and/or other materials provided with the distribution.
+//
+//   * The name of the copyright holders may not be used to endorse or promote products
+//     derived from this software without specific prior written permission.
+//
+// This software is provided by the copyright holders and contributors "as is" and
+// any express or implied warranties, including, but not limited to, the implied
+// warranties of merchantability and fitness for a particular purpose are disclaimed.
+// In no event shall the Intel Corporation or contributors be liable for any direct,
+// indirect, incidental, special, exemplary, or consequential damages
+// (including, but not limited to, procurement of substitute goods or services;
+// loss of use, data, or profits; or business interruption) however caused
+// and on any theory of liability, whether in contract, strict liability,
+// or tort (including negligence or otherwise) arising in any way out of
+// the use of this software, even if advised of the possibility of such damage.
+//
+//M*/
+
 #if defined _MSC_VER && _MSC_VER >= 1200
 # pragma warning (disable : 4408 4201 4100)
 #endif
@@ -281,7 +323,8 @@ static void devNullOutput(const std::string& msg)
 bool nvidia_NPPST_Integral_Image(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path.c_str();
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerII("NPPST Integral Image", outputLevel);
 
@@ -297,7 +340,8 @@ bool nvidia_NPPST_Integral_Image(const std::string& test_data_path, OutputLevel 
 bool nvidia_NPPST_Squared_Integral_Image(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerSII("NPPST Squared Integral Image", outputLevel);
 
@@ -311,7 +355,8 @@ bool nvidia_NPPST_Squared_Integral_Image(const std::string& test_data_path, Outp
 bool nvidia_NPPST_RectStdDev(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerRStdDev("NPPST RectStdDev", outputLevel);
 
@@ -325,7 +370,8 @@ bool nvidia_NPPST_RectStdDev(const std::string& test_data_path, OutputLevel outp
 bool nvidia_NPPST_Resize(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerResize("NPPST Resize", outputLevel);
 
@@ -341,7 +387,8 @@ bool nvidia_NPPST_Resize(const std::string& test_data_path, OutputLevel outputLe
 bool nvidia_NPPST_Vector_Operations(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerNPPSTVectorOperations("NPPST Vector Operations", outputLevel);
 
@@ -355,7 +402,8 @@ bool nvidia_NPPST_Vector_Operations(const std::string& test_data_path, OutputLev
 bool nvidia_NPPST_Transpose(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerTranspose("NPPST Transpose", outputLevel);
 
@@ -371,7 +419,8 @@ bool nvidia_NPPST_Transpose(const std::string& test_data_path, OutputLevel outpu
 bool nvidia_NCV_Vector_Operations(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerVectorOperations("Vector Operations", outputLevel);
 
@@ -386,7 +435,8 @@ bool nvidia_NCV_Vector_Operations(const std::string& test_data_path, OutputLevel
 bool nvidia_NCV_Haar_Cascade_Loader(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerHaarLoader("Haar Cascade Loader", outputLevel);
 
@@ -398,7 +448,8 @@ bool nvidia_NCV_Haar_Cascade_Loader(const std::string& test_data_path, OutputLev
 bool nvidia_NCV_Haar_Cascade_Application(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerHaarAppl("Haar Cascade Application", outputLevel);
 
@@ -412,7 +463,8 @@ bool nvidia_NCV_Haar_Cascade_Application(const std::string& test_data_path, Outp
 bool nvidia_NCV_Hypotheses_Filtration(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerHypFiltration("Hypotheses Filtration", outputLevel);
 
@@ -426,7 +478,8 @@ bool nvidia_NCV_Hypotheses_Filtration(const std::string& test_data_path, OutputL
 bool nvidia_NCV_Visualization(const std::string& test_data_path, OutputLevel outputLevel)
 {
     path = test_data_path;
-    ncvSetDebugOutputHandler(devNullOutput);
+    if (outputLevel != OutputLevelFull)
+        ncvSetDebugOutputHandler(devNullOutput);
 
     NCVAutoTestLister testListerVisualize("Visualization", outputLevel);
 

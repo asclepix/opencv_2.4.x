@@ -10,7 +10,7 @@ static void help()
 {
     cout << "\nThis program demonstrates circle finding with the Hough transform.\n"
             "Usage:\n"
-            "./houghcircles <image_name>, Default is pic1.png\n" << endl;
+            "./houghcircles <image_name>, Default is board.jpg\n" << endl;
 }
 
 int main(int argc, char** argv)
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 
     Mat cimg;
     medianBlur(img, img, 5);
-    cvtColor(img, cimg, CV_GRAY2BGR);
+    cvtColor(img, cimg, COLOR_GRAY2BGR);
 
     vector<Vec3f> circles;
     HoughCircles(img, circles, CV_HOUGH_GRADIENT, 1, 10,

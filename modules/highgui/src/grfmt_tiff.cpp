@@ -45,19 +45,26 @@
     (see otherlibs/_graphics/readme.txt for copyright notice)
 \****************************************************************************************/
 
+#include <stdarg.h>
+
 #include "precomp.hpp"
 #include "grfmt_tiff.hpp"
+
+#define int64 int64_tiff
+#define uint64 uint64_tiff
+
+#ifdef HAVE_TIFF
+# include "tiff.h"
+# include "tiffio.h"
+#endif
 
 namespace cv
 {
 static const char fmtSignTiffII[] = "II\x2a\x00";
-static const char fmtSignTiffMM[] = "MM\x00\x2a";
 
 #ifdef HAVE_TIFF
 
-#include "tiff.h"
-#include "tiffio.h"
-
+static const char fmtSignTiffMM[] = "MM\x00\x2a";
 static int grfmt_tiff_err_handler_init = 0;
 static void GrFmtSilentTIFFErrorHandler( const char*, const char*, va_list ) {}
 
@@ -111,18 +118,21 @@ bool TiffDecoder::readHeader()
     bool result = false;
 
     close();
-    TIFF* tif = TIFFOpen( m_filename.c_str(), "rb" );
+    // TIFFOpen() mode flags are different to fopen().  A 'b' in mode "rb" has no effect when reading.
+    // http://www.remotesensing.org/libtiff/man/TIFFOpen.3tiff.html
+    TIFF* tif = TIFFOpen( m_filename.c_str(), "r" );
 
     if( tif )
     {
-        int wdth = 0, hght = 0, photometric = 0;
+        uint32 wdth = 0, hght = 0;
+        uint16 photometric = 0;
         m_tif = tif;
 
         if( TIFFGetField( tif, TIFFTAG_IMAGEWIDTH, &wdth ) &&
             TIFFGetField( tif, TIFFTAG_IMAGELENGTH, &hght ) &&
             TIFFGetField( tif, TIFFTAG_PHOTOMETRIC, &photometric ))
         {
-            int bpp=8, ncn = photometric > 1 ? 3 : 1;
+            uint16 bpp=8, ncn = photometric > 1 ? 3 : 1;
             TIFFGetField( tif, TIFFTAG_BITSPERSAMPLE, &bpp );
             TIFFGetField( tif, TIFFTAG_SAMPLESPERPIXEL, &ncn );
 
@@ -175,12 +185,12 @@ bool  TiffDecoder::readData( Mat& img )
     if( m_tif && m_width && m_height )
     {
         TIFF* tif = (TIFF*)m_tif;
-        int tile_width0 = m_width, tile_height0 = 0;
+        uint32 tile_width0 = m_width, tile_height0 = 0;
         int x, y, i;
         int is_tiled = TIFFIsTiled(tif);
-        int photometric;
+        uint16 photometric;
         TIFFGetField( tif, TIFFTAG_PHOTOMETRIC, &photometric );
-        int bpp = 8, ncn = photometric > 1 ? 3 : 1;
+        uint16 bpp = 8, ncn = photometric > 1 ? 3 : 1;
         TIFFGetField( tif, TIFFTAG_BITSPERSAMPLE, &bpp );
         TIFFGetField( tif, TIFFTAG_SAMPLESPERPIXEL, &ncn );
         const int bitsPerByte = 8;
@@ -207,10 +217,17 @@ bool  TiffDecoder::readData( Mat& img )
             if( tile_width0 <= 0 )
                 tile_width0 = m_width;
 
-            if( tile_height0 <= 0 )
+            if( tile_height0 <= 0 ||
+                (!is_tiled && tile_height0 == std::numeric_limits<uint32>::max()) )
                 tile_height0 = m_height;
 
-            AutoBuffer<uchar> _buffer( size_t(8) * tile_height0*tile_width0);
+            if(dst_bpp == 8) {
+                // we will use TIFFReadRGBA* functions, so allocate temporary buffer for 32bit RGBA
+                bpp = 8;
+                ncn = 4;
+            }
+            const size_t buffer_size = (bpp/bitsPerByte) * ncn * tile_height0 * tile_width0;
+            AutoBuffer<uchar> _buffer( buffer_size );
             uchar* buffer = _buffer;
             ushort* buffer16 = (ushort*)buffer;
             float* buffer32 = (float*)buffer;
@@ -235,11 +252,15 @@ bool  TiffDecoder::readData( Mat& img )
                     {
                         case 8:
                         {
+                            uchar * bstart = buffer;
                             if( !is_tiled )
                                 ok = TIFFReadRGBAStrip( tif, y, (uint32*)buffer );
                             else
+                            {
                                 ok = TIFFReadRGBATile( tif, x, y, (uint32*)buffer );
-
+                                //Tiles fill the buffer from the bottom up
+                                bstart += (tile_height0 - tile_height) * tile_width0 * 4;
+                            }
                             if( !ok )
                             {
                                 close();
@@ -248,11 +269,11 @@ bool  TiffDecoder::readData( Mat& img )
 
                             for( i = 0; i < tile_height; i++ )
                                 if( color )
-                                    icvCvt_BGRA2BGR_8u_C4C3R( buffer + i*tile_width*4, 0,
+                                    icvCvt_BGRA2BGR_8u_C4C3R( bstart + i*tile_width0*4, 0,
                                                              data + x*3 + img.step*(tile_height - i - 1), 0,
                                                              cvSize(tile_width,1), 2 );
                                 else
-                                    icvCvt_BGRA2Gray_8u_C4C1R( buffer + i*tile_width*4, 0,
+                                    icvCvt_BGRA2Gray_8u_C4C1R( bstart + i*tile_width0*4, 0,
                                                               data + x + img.step*(tile_height - i - 1), 0,
                                                               cvSize(tile_width,1), 2 );
                             break;
@@ -261,9 +282,9 @@ bool  TiffDecoder::readData( Mat& img )
                         case 16:
                         {
                             if( !is_tiled )
-                                ok = (int)TIFFReadEncodedStrip( tif, tileidx, (uint32*)buffer, (tsize_t)-1 ) >= 0;
+                                ok = (int)TIFFReadEncodedStrip( tif, tileidx, (uint32*)buffer, buffer_size ) >= 0;
                             else
-                                ok = (int)TIFFReadEncodedTile( tif, tileidx, (uint32*)buffer, (tsize_t)-1 ) >= 0;
+                                ok = (int)TIFFReadEncodedTile( tif, tileidx, (uint32*)buffer, buffer_size ) >= 0;
 
                             if( !ok )
                             {
@@ -277,19 +298,19 @@ bool  TiffDecoder::readData( Mat& img )
                                 {
                                     if( ncn == 1 )
                                     {
-                                        icvCvt_Gray2BGR_16u_C1C3R(buffer16 + i*tile_width*ncn, 0,
+                                        icvCvt_Gray2BGR_16u_C1C3R(buffer16 + i*tile_width0*ncn, 0,
                                                                   (ushort*)(data + img.step*i) + x*3, 0,
                                                                   cvSize(tile_width,1) );
                                     }
                                     else if( ncn == 3 )
                                     {
-                                        icvCvt_RGB2BGR_16u_C3R(buffer16 + i*tile_width*ncn, 0,
+                                        icvCvt_RGB2BGR_16u_C3R(buffer16 + i*tile_width0*ncn, 0,
                                                                (ushort*)(data + img.step*i) + x*3, 0,
                                                                cvSize(tile_width,1) );
                                     }
                                     else
                                     {
-                                        icvCvt_BGRA2BGR_16u_C4C3R(buffer16 + i*tile_width*ncn, 0,
+                                        icvCvt_BGRA2BGR_16u_C4C3R(buffer16 + i*tile_width0*ncn, 0,
                                                                (ushort*)(data + img.step*i) + x*3, 0,
                                                                cvSize(tile_width,1), 2 );
                                     }
@@ -299,12 +320,12 @@ bool  TiffDecoder::readData( Mat& img )
                                     if( ncn == 1 )
                                     {
                                         memcpy((ushort*)(data + img.step*i)+x,
-                                               buffer16 + i*tile_width*ncn,
+                                               buffer16 + i*tile_width0*ncn,
                                                tile_width*sizeof(buffer16[0]));
                                     }
                                     else
                                     {
-                                        icvCvt_BGRA2Gray_16u_CnC1R(buffer16 + i*tile_width*ncn, 0,
+                                        icvCvt_BGRA2Gray_16u_CnC1R(buffer16 + i*tile_width0*ncn, 0,
                                                                (ushort*)(data + img.step*i) + x, 0,
                                                                cvSize(tile_width,1), ncn, 2 );
                                     }
@@ -317,9 +338,9 @@ bool  TiffDecoder::readData( Mat& img )
                         case 64:
                         {
                             if( !is_tiled )
-                                ok = (int)TIFFReadEncodedStrip( tif, tileidx, buffer, (tsize_t)-1 ) >= 0;
+                                ok = (int)TIFFReadEncodedStrip( tif, tileidx, buffer, buffer_size ) >= 0;
                             else
-                                ok = (int)TIFFReadEncodedTile( tif, tileidx, buffer, (tsize_t)-1 ) >= 0;
+                                ok = (int)TIFFReadEncodedTile( tif, tileidx, buffer, buffer_size ) >= 0;
 
                             if( !ok || ncn != 1 )
                             {
@@ -332,13 +353,13 @@ bool  TiffDecoder::readData( Mat& img )
                                 if(dst_bpp == 32)
                                 {
                                     memcpy((float*)(data + img.step*i)+x,
-                                           buffer32 + i*tile_width*ncn,
+                                           buffer32 + i*tile_width0*ncn,
                                            tile_width*sizeof(buffer32[0]));
                                 }
                                 else
                                 {
                                     memcpy((double*)(data + img.step*i)+x,
-                                         buffer64 + i*tile_width*ncn,
+                                         buffer64 + i*tile_width0*ncn,
                                          tile_width*sizeof(buffer64[0]));
                                 }
                             }
@@ -475,8 +496,13 @@ bool  TiffEncoder::writeLibTiff( const Mat& img, const vector<int>& params)
       || !TIFFSetField(pTiffHandle, TIFFTAG_SAMPLESPERPIXEL, channels)
       || !TIFFSetField(pTiffHandle, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG)
       || !TIFFSetField(pTiffHandle, TIFFTAG_ROWSPERSTRIP, rowsPerStrip)
-      || !TIFFSetField(pTiffHandle, TIFFTAG_PREDICTOR, predictor)
        )
+    {
+        TIFFClose(pTiffHandle);
+        return false;
+    }
+
+    if (compression != COMPRESSION_NONE && !TIFFSetField(pTiffHandle, TIFFTAG_PREDICTOR, predictor) )
     {
         TIFFClose(pTiffHandle);
         return false;

@@ -209,7 +209,7 @@ public:
     CvBlobDetectorSimple();
    ~CvBlobDetectorSimple();
     int DetectNewBlob(IplImage* pImg, IplImage* pFGMask, CvBlobSeq* pNewBlobList, CvBlobSeq* pOldBlobList);
-    void Release(){delete this;};
+    void Release(){delete this;}
 
 protected:
     IplImage*       m_pMaskBlobNew;
@@ -219,7 +219,7 @@ protected:
 };
 
 /* Blob detector creator (sole interface function for this file) */
-CvBlobDetector* cvCreateBlobDetectorSimple(){return new CvBlobDetectorSimple;};
+CvBlobDetector* cvCreateBlobDetectorSimple(){return new CvBlobDetectorSimple;}
 
 /* Constructor of BlobDetector: */
 CvBlobDetectorSimple::CvBlobDetectorSimple()
@@ -588,7 +588,9 @@ private:
     float           m_param_roi_scale;
     int             m_param_only_roi;
 
+#ifdef USE_OBJECT_DETECTOR
     CvObjectDetector* m_split_detector;
+#endif
     CvSize          m_min_window_size;
     int             m_max_border;
 
@@ -603,7 +605,9 @@ CvBlobDetector* cvCreateBlobDetectorCC(){return new CvBlobDetectorCC;}
 
 /* Constructor for BlobDetector: */
 CvBlobDetectorCC::CvBlobDetectorCC() :
+#ifdef USE_OBJECT_DETECTOR
     m_split_detector(0),
+#endif
     m_detected_blob_seq(sizeof(CvDetectedBlob)),
     m_roi_seq(0),
     m_debug_blob_seq(sizeof(CvDetectedBlob))
@@ -1060,5 +1064,3 @@ int CvBlobDetectorCC::DetectNewBlob(IplImage* /*pImg*/, IplImage* pFGMask, CvBlo
     return result;
 
 }   /* cvDetectNewBlob */
-
-

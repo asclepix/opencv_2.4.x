@@ -77,6 +77,10 @@ if(MSVC)
     set(OpenCV_RUNTIME vc10)
   elseif(MSVC_VERSION EQUAL 1700)
     set(OpenCV_RUNTIME vc11)
+  elseif(MSVC_VERSION EQUAL 1800)
+    set(OpenCV_RUNTIME vc12)
+  elseif(MSVC_VERSION EQUAL 1900)
+    set(OpenCV_RUNTIME vc14)
   endif()
 elseif(MINGW)
   set(OpenCV_RUNTIME mingw)
@@ -84,7 +88,7 @@ elseif(MINGW)
   execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpmachine
                   OUTPUT_VARIABLE OPENCV_GCC_TARGET_MACHINE
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(CMAKE_OPENCV_GCC_TARGET_MACHINE MATCHES "64")
+  if(OPENCV_GCC_TARGET_MACHINE MATCHES "amd64|x86_64|AMD64")
     set(MINGW64 1)
     set(OpenCV_ARCH x64)
   else()
@@ -94,6 +98,12 @@ endif()
 
 if(CMAKE_VERSION VERSION_GREATER 2.6.2)
   unset(OpenCV_CONFIG_PATH CACHE)
+endif()
+
+if(NOT OpenCV_FIND_QUIETLY)
+  message(STATUS "OpenCV ARCH: ${OpenCV_ARCH}")
+  message(STATUS "OpenCV RUNTIME: ${OpenCV_RUNTIME}")
+  message(STATUS "OpenCV STATIC: ${OpenCV_STATIC}")
 endif()
 
 get_filename_component(OpenCV_CONFIG_PATH "${CMAKE_CURRENT_LIST_FILE}" PATH CACHE)
@@ -150,10 +160,11 @@ if(OpenCV_LIB_PATH AND EXISTS "${OpenCV_LIB_PATH}/OpenCVConfig.cmake")
   endif()
 else()
   if(NOT OpenCV_FIND_QUIETLY)
-    message(WARNING "Found OpenCV 2.4.3 Windows Super Pack but it has not binaries compatible with your configuration.
-    You should manually point CMake variable OpenCV_DIR to your build of OpenCV library.")
+    message(WARNING
+"Found OpenCV Windows Pack but it has not binaries compatible with your configuration.
+You should manually point CMake variable OpenCV_DIR to your build of OpenCV library."
+    )
   endif()
   set(OpenCV_FOUND FALSE CACHE BOOL "" FORCE)
   set(OPENCV_FOUND FALSE CACHE BOOL "" FORCE)
 endif()
-

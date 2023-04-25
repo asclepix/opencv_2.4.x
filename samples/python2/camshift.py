@@ -1,4 +1,4 @@
-#/usr/bin/env python
+#!/usr/bin/env python
 
 '''
 Camshift tracker
@@ -44,6 +44,7 @@ class App(object):
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drag_start = (x, y)
             self.tracking_state = 0
+            return
         if self.drag_start:
             if flags & cv2.EVENT_FLAG_LBUTTON:
                 h, w = self.frame.shape[:2]
@@ -117,4 +118,3 @@ if __name__ == '__main__':
     except: video_src = 0
     print __doc__
     App(video_src).run()
-

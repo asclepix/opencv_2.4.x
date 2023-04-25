@@ -85,10 +85,10 @@ namespace
     };
     size_t colors_mum = sizeof(colors)/sizeof(colors[0]);
 
-//#if (defined __cplusplus  && __cplusplus > 199711L) || defined _STLPORT_MAJOR
-//#else
-template<class FwIt, class T> void _iota(FwIt first, FwIt last, T value) { while(first != last) *first++ = value++; }
-//#endif
+template<class FwIt, class T> inline void _iota(FwIt first, FwIt last, T value)
+{
+    while(first != last) *first++ = value++;
+}
 
 void computeNormals( const Octree& Octree, const vector<Point3f>& centers, vector<Point3f>& normals,
                     vector<uchar>& mask, float normalRadius, int minNeighbors = 20)
@@ -718,7 +718,7 @@ void cv::SpinImageModel::defaultParams()
 
     T_GeometriccConsistency = 0.25f;
     T_GroupingCorespondances = 0.25f;
-};
+}
 
 Mat cv::SpinImageModel::packRandomScaledSpins(bool separateScale, size_t xCount, size_t yCount) const
 {
@@ -1209,16 +1209,16 @@ private:
 
 cv::TickMeter::TickMeter() { reset(); }
 int64 cv::TickMeter::getTimeTicks() const { return sumTime; }
-double cv::TickMeter::getTimeMicro() const { return (double)getTimeTicks()/cvGetTickFrequency(); }
-double cv::TickMeter::getTimeMilli() const { return getTimeMicro()*1e-3; }
-double cv::TickMeter::getTimeSec()   const { return getTimeMilli()*1e-3; }
+double cv::TickMeter::getTimeSec()   const { return (double)getTimeTicks()/getTickFrequency(); }
+double cv::TickMeter::getTimeMilli() const { return getTimeSec()*1e3; }
+double cv::TickMeter::getTimeMicro() const { return getTimeMilli()*1e3; }
 int64 cv::TickMeter::getCounter() const { return counter; }
 void  cv::TickMeter::reset() {startTime = 0; sumTime = 0; counter = 0; }
 
-void cv::TickMeter::start(){ startTime = cvGetTickCount(); }
+void cv::TickMeter::start(){ startTime = getTickCount(); }
 void cv::TickMeter::stop()
 {
-    int64 time = cvGetTickCount();
+    int64 time = getTickCount();
     if ( startTime == 0 )
         return;
 

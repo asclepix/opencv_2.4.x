@@ -239,7 +239,7 @@ Line( Mat& img, Point pt1, Point pt2,
 {
     if( connectivity == 0 )
         connectivity = 8;
-    if( connectivity == 1 )
+    else if( connectivity == 1 )
         connectivity = 4;
 
     LineIterator iterator(img, pt1, pt2, connectivity, true);
@@ -288,14 +288,14 @@ LineAA( Mat& img, Point pt1, Point pt2, const void* color )
     int x_step, y_step;
     int i, j;
     int ep_table[9];
-    int cb = ((uchar*)color)[0], cg = ((uchar*)color)[1], cr = ((uchar*)color)[2];
-    int _cb, _cg, _cr;
+    int cb = ((uchar*)color)[0], cg = ((uchar*)color)[1], cr = ((uchar*)color)[2], ca = ((uchar*)color)[3];
+    int _cb, _cg, _cr, _ca;
     int nch = img.channels();
     uchar* ptr = img.data;
     size_t step = img.step;
     Size size = img.size();
 
-    if( !((nch == 1 || nch == 3) && img.depth() == CV_8U) )
+    if( !((nch == 1 || nch == 3 || nch == 4) && img.depth() == CV_8U) )
     {
         Line(img, pt1, pt2, color);
         return;
@@ -468,7 +468,7 @@ LineAA( Mat& img, Point pt1, Point pt2, const void* color )
         }
         #undef ICV_PUT_POINT
     }
-    else
+    else if (nch == 1)
     {
         #define  ICV_PUT_POINT()            \
         {                                   \
@@ -531,6 +531,89 @@ LineAA( Mat& img, Point pt1, Point pt2, const void* color )
                 ICV_PUT_POINT();
 
                 tptr++;
+                a = (ep_corr * FilterTable[63 - dist] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                pt1.x += x_step;
+                ptr += step;
+                scount++;
+                ecount--;
+            }
+        }
+        #undef ICV_PUT_POINT
+    }
+    else
+    {
+        #define  ICV_PUT_POINT()            \
+        {                                   \
+            _cb = tptr[0];                  \
+            _cb += ((cb - _cb)*a + 127)>> 8;\
+            _cg = tptr[1];                  \
+            _cg += ((cg - _cg)*a + 127)>> 8;\
+            _cr = tptr[2];                  \
+            _cr += ((cr - _cr)*a + 127)>> 8;\
+            _ca = tptr[3];                  \
+            _ca += ((ca - _ca)*a + 127)>> 8;\
+            tptr[0] = (uchar)_cb;           \
+            tptr[1] = (uchar)_cg;           \
+            tptr[2] = (uchar)_cr;           \
+            tptr[3] = (uchar)_ca;           \
+        }
+        if( ax > ay )
+        {
+            ptr += (pt1.x >> XY_SHIFT) * 4;
+
+            while( ecount >= 0 )
+            {
+                uchar *tptr = ptr + ((pt1.y >> XY_SHIFT) - 1) * step;
+
+                int ep_corr = ep_table[(((scount >= 2) + 1) & (scount | 2)) * 3 +
+                                       (((ecount >= 2) + 1) & (ecount | 2))];
+                int a, dist = (pt1.y >> (XY_SHIFT - 5)) & 31;
+
+                a = (ep_corr * FilterTable[dist + 32] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                tptr += step;
+                a = (ep_corr * FilterTable[dist] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                tptr += step;
+                a = (ep_corr * FilterTable[63 - dist] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                pt1.y += y_step;
+                ptr += 4;
+                scount++;
+                ecount--;
+            }
+        }
+        else
+        {
+            ptr += (pt1.y >> XY_SHIFT) * step;
+
+            while( ecount >= 0 )
+            {
+                uchar *tptr = ptr + ((pt1.x >> XY_SHIFT) - 1) * 4;
+
+                int ep_corr = ep_table[(((scount >= 2) + 1) & (scount | 2)) * 3 +
+                                       (((ecount >= 2) + 1) & (ecount | 2))];
+                int a, dist = (pt1.x >> (XY_SHIFT - 5)) & 31;
+
+                a = (ep_corr * FilterTable[dist + 32] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                tptr += 4;
+                a = (ep_corr * FilterTable[dist] >> 8) & 0xff;
+                ICV_PUT_POINT();
+                ICV_PUT_POINT();
+
+                tptr += 4;
                 a = (ep_corr * FilterTable[63 - dist] >> 8) & 0xff;
                 ICV_PUT_POINT();
                 ICV_PUT_POINT();
@@ -886,11 +969,13 @@ void ellipse2Poly( Point center, Size axes, int angle,
         Point pt;
         pt.x = cvRound( cx + x * alpha - y * beta );
         pt.y = cvRound( cy + x * beta + y * alpha );
-        if( pt != prevPt )
+        if( pt != prevPt ){
             pts.push_back(pt);
+            prevPt = pt;
+        }
     }
 
-    if( pts.size() < 2 )
+    if( pts.size() == 1 )
         pts.push_back(pts[0]);
 }
 
@@ -1186,10 +1271,15 @@ FillEdgeCollection( Mat& img, vector<PolyEdge>& edges, const void* color )
     {
         PolyEdge& e1 = edges[i];
         assert( e1.y0 < e1.y1 );
+        // Determine x-coordinate of the end of the edge.
+        // (This is not necessary x-coordinate of any vertex in the array.)
+        int x1 = e1.x + (e1.y1 - e1.y0) * e1.dx;
         y_min = std::min( y_min, e1.y0 );
         y_max = std::max( y_max, e1.y1 );
         x_min = std::min( x_min, e1.x );
         x_max = std::max( x_max, e1.x );
+        x_min = std::min( x_min, x1 );
+        x_max = std::max( x_max, x1 );
     }
 
     if( y_max < 0 || y_min >= size.height || x_max < 0 || x_min >= (size.width<<XY_SHIFT) )
@@ -1578,6 +1668,25 @@ void line( Mat& img, Point pt1, Point pt2, const Scalar& color,
     ThickLine( img, pt1, pt2, buf, thickness, line_type, 3, shift );
 }
 
+void arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color,
+           int thickness, int line_type, int shift, double tipLength)
+{
+    const double tipSize = norm(pt1-pt2)*tipLength;// Factor to normalize the size of the tip depending on the length of the arrow
+
+    line(img, pt1, pt2, color, thickness, line_type, shift);
+
+    const double angle = atan2( (double) pt1.y - pt2.y, (double) pt1.x - pt2.x );
+
+    Point p(cvRound(pt2.x + tipSize * cos(angle + CV_PI / 4)),
+                cvRound(pt2.y + tipSize * sin(angle + CV_PI / 4)));
+    line(img, p, pt2, color, thickness, line_type, shift);
+
+    p.x = cvRound(pt2.x + tipSize * cos(angle - CV_PI / 4));
+    p.y = cvRound(pt2.y + tipSize * sin(angle - CV_PI / 4));
+    line(img, p, pt2, color, thickness, line_type, shift);
+
+}
+
 void rectangle( Mat& img, Point pt1, Point pt2,
                 const Scalar& color, int thickness,
                 int lineType, int shift )
@@ -1630,7 +1739,7 @@ void circle( Mat& img, Point center, int radius,
     double buf[4];
     scalarToRawData(color, buf, img.type(), 0);
 
-    if( thickness > 1 || line_type >= CV_AA )
+    if( thickness > 1 || line_type >= CV_AA || shift > 0 )
     {
         center.x <<= XY_SHIFT - shift;
         center.y <<= XY_SHIFT - shift;
@@ -1687,6 +1796,73 @@ void ellipse(Mat& img, const RotatedRect& box, const Scalar& color,
               cvRound(box.size.height*(1 << (XY_SHIFT - 1))));
     EllipseEx( img, center, axes, _angle, 0, 360, buf, thickness, lineType );
 }
+
+/* ----------------------------------------------------------------------------------------- */
+/* ADDING A SET OF PREDEFINED MARKERS WHICH COULD BE USED TO HIGHLIGHT POSITIONS IN AN IMAGE */
+/* ----------------------------------------------------------------------------------------- */
+
+void drawMarker(Mat& img, Point position, const Scalar& color, int markerType, int markerSize, int thickness, int line_type)
+{
+    switch(markerType)
+    {
+    // The cross marker case
+    case MARKER_CROSS:
+        line(img, Point(position.x-(markerSize/2), position.y), Point(position.x+(markerSize/2), position.y), color, thickness, line_type);
+        line(img, Point(position.x, position.y-(markerSize/2)), Point(position.x, position.y+(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The tilted cross marker case
+    case MARKER_TILTED_CROSS:
+        line(img, Point(position.x-(markerSize/2), position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y-(markerSize/2)), Point(position.x-(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The star marker case
+    case MARKER_STAR:
+        line(img, Point(position.x-(markerSize/2), position.y), Point(position.x+(markerSize/2), position.y), color, thickness, line_type);
+        line(img, Point(position.x, position.y-(markerSize/2)), Point(position.x, position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x-(markerSize/2), position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y-(markerSize/2)), Point(position.x-(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The diamond marker case
+    case MARKER_DIAMOND:
+        line(img, Point(position.x, position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y), Point(position.x, position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x, position.y+(markerSize/2)), Point(position.x-(markerSize/2), position.y), color, thickness, line_type);
+        line(img, Point(position.x-(markerSize/2), position.y), Point(position.x, position.y-(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The square marker case
+    case MARKER_SQUARE:
+        line(img, Point(position.x-(markerSize/2), position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y-(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y+(markerSize/2)), Point(position.x-(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x-(markerSize/2), position.y+(markerSize/2)), Point(position.x-(markerSize/2), position.y-(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The triangle up marker case
+    case MARKER_TRIANGLE_UP:
+        line(img, Point(position.x-(markerSize/2), position.y+(markerSize/2)), Point(position.x+(markerSize/2), position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y+(markerSize/2)), Point(position.x, position.y-(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x, position.y-(markerSize/2)), Point(position.x-(markerSize/2), position.y-(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // The triangle down marker case
+    case MARKER_TRIANGLE_DOWN:
+        line(img, Point(position.x-(markerSize/2), position.y-(markerSize/2)), Point(position.x+(markerSize/2), position.y-(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x+(markerSize/2), position.y-(markerSize/2)), Point(position.x, position.y+(markerSize/2)), color, thickness, line_type);
+        line(img, Point(position.x, position.y+(markerSize/2)), Point(position.x-(markerSize/2), position.y-(markerSize/2)), color, thickness, line_type);
+        break;
+
+    // If any number that doesn't exist is entered, draw a cross marker
+    default:
+        drawMarker(img, position, color, MARKER_CROSS, markerSize, thickness, line_type);
+        break;
+    }
+}
+
+/* ----------------------------------------------------------------------------------------- */
 
 void fillConvexPoly( Mat& img, const Point* pts, int npts,
                      const Scalar& color, int line_type, int shift )
@@ -1821,7 +1997,11 @@ static const int HersheyComplex[] = {
 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2223, 2084,
 2224, 2247, 587, 2249, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109, 2110, 2111,
 2112, 2113, 2114, 2115, 2116, 2117, 2118, 2119, 2120, 2121, 2122, 2123, 2124, 2125, 2126,
-2225, 2229, 2226, 2246 };
+2225, 2229, 2226, 2246, 2801, 2802, 2803, 2804, 2805, 2806, 2807, 2808, 2809, 2810, 2811,
+2812, 2813, 2814, 2815, 2816, 2817, 2818, 2819, 2820, 2821, 2822, 2823, 2824, 2825, 2826,
+2827, 2828, 2829, 2830, 2831, 2832, 2901, 2902, 2903, 2904, 2905, 2906, 2907, 2908, 2909,
+2910, 2911, 2912, 2913, 2914, 2915, 2916, 2917, 2918, 2919, 2920, 2921, 2922, 2923, 2924,
+2925, 2926, 2927, 2928, 2929, 2930, 2931, 2932};
 
 static const int HersheyComplexItalic[] = {
 (9 + 12*16) + FONT_ITALIC_ALPHA + FONT_ITALIC_DIGIT + FONT_ITALIC_PUNCT +
@@ -1913,6 +2093,49 @@ static const int* getFontData(int fontFace)
     return ascii;
 }
 
+inline void readCheck(int &c, int &i, const string &text, int fontFace)
+{
+
+    int leftBoundary = ' ', rightBoundary = 127;
+
+    if(c >= 0x80 && fontFace == FONT_HERSHEY_COMPLEX)
+    {
+        if(c == 0xD0 && (uchar)text[i + 1] >= 0x90 && (uchar)text[i + 1] <= 0xBF)
+        {
+            c = (uchar)text[++i] - 17;
+            leftBoundary = 127;
+            rightBoundary = 175;
+        }
+        else if(c == 0xD1 && (uchar)text[i + 1] >= 0x80 && (uchar)text[i + 1] <= 0x8F)
+        {
+            c = (uchar)text[++i] + 47;
+            leftBoundary = 175;
+            rightBoundary = 191;
+        }
+        else
+        {
+            if(c >= 0xC0 && text[i+1] != 0) //2 bytes utf
+                i++;
+
+            if(c >= 0xE0 && text[i+1] != 0) //3 bytes utf
+                i++;
+
+            if(c >= 0xF0 && text[i+1] != 0) //4 bytes utf
+                i++;
+
+            if(c >= 0xF8 && text[i+1] != 0) //5 bytes utf
+                i++;
+
+            if(c >= 0xFC && text[i+1] != 0) //6 bytes utf
+                i++;
+
+            c = '?';
+        }
+    }
+
+    if(c >= rightBoundary || c < leftBoundary)
+        c = '?';
+}
 
 void putText( Mat& img, const string& text, Point org,
               int fontFace, double fontScale, Scalar color,
@@ -1939,13 +2162,12 @@ void putText( Mat& img, const string& text, Point org,
     pts.reserve(1 << 10);
     const char **faces = cv::g_HersheyGlyphs;
 
-    for( int i = 0; text[i] != '\0'; i++ )
+    for( int i = 0; i < (int)text.size(); i++ )
     {
         int c = (uchar)text[i];
         Point p;
 
-        if( c >= 127 || c < ' ' )
-            c = '?';
+        readCheck(c, i, text, fontFace);
 
         const char* ptr = faces[ascii[(c-' ')+1]];
         p.x = (uchar)ptr[0] - 'R';
@@ -1987,13 +2209,12 @@ Size getTextSize( const string& text, int fontFace, double fontScale, int thickn
     int cap_line = (ascii[0] >> 4) & 15;
     size.height = cvRound((cap_line + base_line)*fontScale + (thickness+1)/2);
 
-    for( int i = 0; text[i] != '\0'; i++ )
+    for( int i = 0; i < (int)text.size(); i++ )
     {
         int c = (uchar)text[i];
         Point p;
 
-        if( c >= 127 || c < ' ' )
-            c = '?';
+        readCheck(c, i, text, fontFace);
 
         const char* ptr = faces[ascii[(c-' ')+1]];
         p.x = (uchar)ptr[0] - 'R';
@@ -2061,7 +2282,11 @@ void cv::polylines(InputOutputArray _img, InputArrayOfArrays pts,
     {
         Mat p = pts.getMat(manyContours ? i : -1);
         if( p.total() == 0 )
+        {
+            ptsptr[i] = NULL;
+            npts[i] = 0;
             continue;
+        }
         CV_Assert(p.checkVector(2, CV_32S) >= 0);
         ptsptr[i] = (Point*)p.data;
         npts[i] = p.rows*p.cols*p.channels()/2;

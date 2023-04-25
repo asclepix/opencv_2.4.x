@@ -26,12 +26,16 @@ set_target_properties(${the_target} PROPERTIES
                       DEBUG_POSTFIX "${OPENCV_DEBUG_POSTFIX}"
                       ARCHIVE_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}
                       RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
-                      INSTALL_NAME_DIR lib
                       OUTPUT_NAME "opencv_traincascade")
 
 if(ENABLE_SOLUTION_FOLDERS)
   set_target_properties(${the_target} PROPERTIES FOLDER "applications")
 endif()
 
-install(TARGETS ${the_target} RUNTIME DESTINATION bin COMPONENT main)
-
+if(INSTALL_CREATE_DISTRIB)
+  if(BUILD_SHARED_LIBS)
+    install(TARGETS ${the_target} RUNTIME DESTINATION ${OPENCV_BIN_INSTALL_PATH} CONFIGURATIONS Release COMPONENT dev)
+  endif()
+else()
+  install(TARGETS ${the_target} RUNTIME DESTINATION ${OPENCV_BIN_INSTALL_PATH} COMPONENT dev)
+endif()

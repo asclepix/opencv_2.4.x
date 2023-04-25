@@ -42,7 +42,7 @@
 
 #include "precomp.hpp"
 
-#if !defined(HAVE_CUDA) || defined(CUDA_DISABLER) || !defined(HAVE_NVCUVID) || !defined(WIN32)
+#if !defined(HAVE_CUDA) || defined(CUDA_DISABLER) || !defined(HAVE_NVCUVENC) || !defined(WIN32)
 
 class cv::gpu::VideoWriter_GPU::Impl
 {
@@ -70,12 +70,7 @@ void cv::gpu::VideoWriter_GPU::EncoderParams::save(const std::string&) const { t
 
 #else // !defined HAVE_CUDA || !defined WIN32
 
-#ifdef HAVE_FFMPEG
-    #include "../src/cap_ffmpeg_impl.hpp"
-#else
-    #include "../src/cap_ffmpeg_api.hpp"
-#endif
-
+#include "../src/cap_ffmpeg_api.hpp"
 
 ///////////////////////////////////////////////////////////////////////////
 // VideoWriter_GPU::Impl

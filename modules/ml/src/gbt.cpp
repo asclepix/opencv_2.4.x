@@ -10,6 +10,8 @@ using namespace std;
 
 #define CV_CMP_FLOAT(a,b) ((a) < (b))
 static CV_IMPLEMENT_QSORT_EX( icvSortFloat, float, CV_CMP_FLOAT, float)
+#define CV_CMP_INT(a,b) ((a) < (b))
+static CV_IMPLEMENT_QSORT_EX( icvSortInt, int, CV_CMP_INT, int)
 
 //===========================================================================
 static string ToString(int i)
@@ -257,7 +259,7 @@ CvGBTrees::train( const CvMat* _train_data, int _tflag,
         for (int i=1; i<n; ++i)
         {
             int k = 0;
-            while ((int(orig_response->data.fl[i]) - class_labels->data.i[k]) && (k<j))
+            while ((k<j) && (int(orig_response->data.fl[i]) - class_labels->data.i[k]))
                 k++;
             if (k == j)
             {
@@ -282,6 +284,7 @@ CvGBTrees::train( const CvMat* _train_data, int _tflag,
                 sample_idx = cvCreateMat( 1, sample_idx_len, CV_32S );
                 for (int i=0; i<sample_idx_len; ++i)
                     sample_idx->data.i[i] = _sample_idx->data.i[i];
+                icvSortInt(sample_idx->data.i, sample_idx_len, 0);
             } break;
             case CV_8S:
             case CV_8U:
@@ -298,7 +301,6 @@ CvGBTrees::train( const CvMat* _train_data, int _tflag,
             } break;
             default: CV_Error(CV_StsUnmatchedFormats, "_sample_idx should be a 32sC1, 8sC1 or 8uC1 vector.");
         }
-        icvSortFloat(sample_idx->data.fl, sample_idx_len, 0);
     }
     else
     {
@@ -900,7 +902,7 @@ float CvGBTrees::predict_serial( const CvMat* _sample, const CvMat* _missing,
 }
 
 
-class Tree_predictor
+class Tree_predictor : public cv::ParallelLoopBody
 {
 private:
     pCvSeq* weak;
@@ -910,9 +912,7 @@ private:
     const CvMat* missing;
     const float shrinkage;
 
-#ifdef HAVE_TBB
-    static tbb::spin_mutex SumMutex;
-#endif
+    static cv::Mutex SumMutex;
 
 
 public:
@@ -931,14 +931,11 @@ public:
     Tree_predictor& operator=( const Tree_predictor& )
     { return *this; }
 
-    virtual void operator()(const cv::BlockedRange& range) const
+    virtual void operator()(const cv::Range& range) const
     {
-#ifdef HAVE_TBB
-        tbb::spin_mutex::scoped_lock lock;
-#endif
         CvSeqReader reader;
-        int begin = range.begin();
-        int end = range.end();
+        int begin = range.start;
+        int end = range.end;
 
         int weak_count = end - begin;
         CvDTree* tree;
@@ -956,13 +953,11 @@ public:
                     tmp_sum += shrinkage*(float)(tree->predict(sample, missing)->value);
                 }
             }
-#ifdef HAVE_TBB
-            lock.acquire(SumMutex);
-            sum[i] += tmp_sum;
-            lock.release();
-#else
-            sum[i] += tmp_sum;
-#endif
+
+            {
+                cv::AutoLock lock(SumMutex);
+                sum[i] += tmp_sum;
+            }
         }
     } // Tree_predictor::operator()
 
@@ -970,11 +965,7 @@ public:
 
 }; // class Tree_predictor
 
-
-#ifdef HAVE_TBB
-tbb::spin_mutex Tree_predictor::SumMutex;
-#endif
-
+cv::Mutex Tree_predictor::SumMutex;
 
 
 float CvGBTrees::predict( const CvMat* _sample, const CvMat* _missing,
@@ -992,12 +983,7 @@ float CvGBTrees::predict( const CvMat* _sample, const CvMat* _missing,
         Tree_predictor predictor = Tree_predictor(weak_seq, class_count,
                                     params.shrinkage, _sample, _missing, sum);
 
-//#ifdef HAVE_TBB
-//      tbb::parallel_for(cv::BlockedRange(begin, end), predictor,
-//                          tbb::auto_partitioner());
-//#else
-        cv::parallel_for(cv::BlockedRange(begin, end), predictor);
-//#endif
+        cv::parallel_for_(cv::Range(begin, end), predictor);
 
         for (int i=0; i<class_count; ++i)
             sum[i] = sum[i] /** params.shrinkage*/ + base_value;
@@ -1228,7 +1214,7 @@ void CvGBTrees::read( CvFileStorage* fs, CvFileNode* node )
 
 //===========================================================================
 
-class Sample_predictor
+class Sample_predictor : public cv::ParallelLoopBody
 {
 private:
     const CvGBTrees* gbt;
@@ -1258,10 +1244,10 @@ public:
     {}
 
 
-    virtual void operator()(const cv::BlockedRange& range) const
+    virtual void operator()(const cv::Range& range) const
     {
-        int begin = range.begin();
-        int end = range.end();
+        int begin = range.start;
+        int end = range.end;
 
         CvMat x;
         CvMat miss;
@@ -1306,22 +1292,23 @@ CvGBTrees::calc_error( CvMLData* _data, int type, std::vector<float> *resp )
         return -FLT_MAX;
 
     float* pred_resp = 0;
+    bool needsFreeing = false;
+
     if (resp)
     {
         resp->resize(n);
         pred_resp = &((*resp)[0]);
     }
     else
+    {
         pred_resp = new float[n];
+        needsFreeing = true;
+    }
 
     Sample_predictor predictor = Sample_predictor(this, pred_resp, _data->get_values(),
             _data->get_missing(), _sample_idx);
 
-//#ifdef HAVE_TBB
-//    tbb::parallel_for(cv::BlockedRange(0,n), predictor, tbb::auto_partitioner());
-//#else
-    cv::parallel_for(cv::BlockedRange(0,n), predictor);
-//#endif
+    cv::parallel_for_(cv::Range(0,n), predictor);
 
     int* sidx = _sample_idx ? _sample_idx->data.i : 0;
     int r_step = CV_IS_MAT_CONT(response->type) ?
@@ -1348,6 +1335,9 @@ CvGBTrees::calc_error( CvMLData* _data, int type, std::vector<float> *resp )
         }
         err = err / (float)n;
     }
+
+    if (needsFreeing)
+        delete[]pred_resp;
 
     return err;
 }

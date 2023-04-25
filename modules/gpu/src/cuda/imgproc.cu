@@ -619,6 +619,7 @@ namespace cv { namespace gpu { namespace device
         //////////////////////////////////////////////////////////////////////////
         // mulSpectrums
 
+#ifdef HAVE_CUFFT
         __global__ void mulSpectrumsKernel(const PtrStep<cufftComplex> a, const PtrStep<cufftComplex> b, PtrStepSz<cufftComplex> c)
         {
             const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -642,11 +643,13 @@ namespace cv { namespace gpu { namespace device
             if (stream == 0)
                 cudaSafeCall( cudaDeviceSynchronize() );
         }
+#endif
 
 
         //////////////////////////////////////////////////////////////////////////
         // mulSpectrums_CONJ
 
+#ifdef HAVE_CUFFT
         __global__ void mulSpectrumsKernel_CONJ(const PtrStep<cufftComplex> a, const PtrStep<cufftComplex> b, PtrStepSz<cufftComplex> c)
         {
             const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -670,11 +673,13 @@ namespace cv { namespace gpu { namespace device
             if (stream == 0)
                 cudaSafeCall( cudaDeviceSynchronize() );
         }
+#endif
 
 
         //////////////////////////////////////////////////////////////////////////
         // mulAndScaleSpectrums
 
+#ifdef HAVE_CUFFT
         __global__ void mulAndScaleSpectrumsKernel(const PtrStep<cufftComplex> a, const PtrStep<cufftComplex> b, float scale, PtrStepSz<cufftComplex> c)
         {
             const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -699,11 +704,13 @@ namespace cv { namespace gpu { namespace device
             if (stream)
                 cudaSafeCall( cudaDeviceSynchronize() );
         }
+#endif
 
 
         //////////////////////////////////////////////////////////////////////////
         // mulAndScaleSpectrums_CONJ
 
+#ifdef HAVE_CUFFT
         __global__ void mulAndScaleSpectrumsKernel_CONJ(const PtrStep<cufftComplex> a, const PtrStep<cufftComplex> b, float scale, PtrStepSz<cufftComplex> c)
         {
             const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -728,6 +735,7 @@ namespace cv { namespace gpu { namespace device
             if (stream == 0)
                 cudaSafeCall( cudaDeviceSynchronize() );
         }
+#endif
 
         //////////////////////////////////////////////////////////////////////////
         // buildWarpMaps
@@ -977,6 +985,16 @@ namespace cv { namespace gpu { namespace device
                           int borderMode, const float* borderValue, cudaStream_t stream)
         {
             typedef void (*func_t)(const PtrStepSz<T> srcWhole, int xoff, int yoff, PtrStepSz<D> dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* borderValue, cudaStream_t stream);
+#ifdef OPENCV_TINY_GPU_MODULE
+            static const func_t funcs[] =
+            {
+                Filter2DCaller<T, D, BrdReflect101>::call,
+                Filter2DCaller<T, D, BrdReplicate>::call,
+                Filter2DCaller<T, D, BrdConstant>::call,
+                Filter2DCaller<T, D, BrdReflect>::call,
+                0
+            };
+#else
             static const func_t funcs[] =
             {
                 Filter2DCaller<T, D, BrdReflect101>::call,
@@ -985,19 +1003,26 @@ namespace cv { namespace gpu { namespace device
                 Filter2DCaller<T, D, BrdReflect>::call,
                 Filter2DCaller<T, D, BrdWrap>::call
             };
+#endif
+
+            const func_t func = funcs[borderMode];
+            if (!func)
+                cv::gpu::error("Unsupported input parameters for filter2D", __FILE__, __LINE__, "");
 
             if (stream == 0)
                 cudaSafeCall( cudaMemcpyToSymbol(c_filter2DKernel, kernel, kWidth * kHeight * sizeof(float), 0, cudaMemcpyDeviceToDevice) );
             else
                 cudaSafeCall( cudaMemcpyToSymbolAsync(c_filter2DKernel, kernel, kWidth * kHeight * sizeof(float), 0, cudaMemcpyDeviceToDevice, stream) );
 
-            funcs[borderMode](static_cast< PtrStepSz<T> >(srcWhole), ofsX, ofsY, static_cast< PtrStepSz<D> >(dst), kWidth, kHeight, anchorX, anchorY, borderValue, stream);
+            func(static_cast< PtrStepSz<T> >(srcWhole), ofsX, ofsY, static_cast< PtrStepSz<D> >(dst), kWidth, kHeight, anchorX, anchorY, borderValue, stream);
         }
 
         template void filter2D_gpu<uchar, uchar>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
         template void filter2D_gpu<uchar4, uchar4>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
+#ifndef OPENCV_TINY_GPU_MODULE
         template void filter2D_gpu<ushort, ushort>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
         template void filter2D_gpu<ushort4, ushort4>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
+#endif
         template void filter2D_gpu<float, float>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
         template void filter2D_gpu<float4, float4>(PtrStepSzb srcWhole, int ofsX, int ofsY, PtrStepSzb dst, int kWidth, int kHeight, int anchorX, int anchorY, const float* kernel, int borderMode, const float* borderValue, cudaStream_t stream);
     } // namespace imgproc

@@ -3,18 +3,10 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/contrib/contrib.hpp"
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #include <io.h>
 #else
 #include <dirent.h>
-#endif
-
-#ifdef HAVE_CVCONFIG_H
-#include <cvconfig.h>
-#endif
-
-#ifdef HAVE_TBB
-#include "tbb/task_scheduler_init.h"
 #endif
 
 using namespace std;
@@ -23,7 +15,7 @@ using namespace cv;
 static void help()
 {
     cout << "This program demonstrated the use of the latentSVM detector." << endl <<
-            "It reads in a trained object models and then uses them to detect the objects in an images." << endl <<
+            "It reads in trained object models and then uses them to detect the objects in images." << endl <<
              endl <<
             "Call:" << endl <<
             "./latentsvm_multidetect <imagesFolder> <modelsFolder> [<overlapThreshold>][<threadsNumber>]" << endl <<
@@ -67,7 +59,7 @@ static void readDirectory( const string& directoryName, vector<string>& filename
 {
     filenames.clear();
 
-#ifdef WIN32
+#if defined(WIN32) | defined(_WIN32)
     struct _finddata_t s_file;
     string str = directoryName + "\\*.*";
 
@@ -96,6 +88,8 @@ static void readDirectory( const string& directoryName, vector<string>& filename
             else
                 filenames.push_back( string(dent->d_name) );
         }
+
+        closedir( dir );
     }
 #endif
 
@@ -130,7 +124,7 @@ int main(int argc, char* argv[])
     LatentSvmDetector detector( models_filenames );
     if( detector.empty() )
     {
-        cout << "Models cann't be loaded" << endl;
+        cout << "Models can't be loaded" << endl;
         exit(-1);
     }
 

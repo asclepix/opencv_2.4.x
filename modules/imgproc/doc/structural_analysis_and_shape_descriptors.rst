@@ -133,7 +133,7 @@ Finds contours in a binary image.
 
 .. ocv:pyoldfunction:: cv.FindContours(image, storage, mode=CV_RETR_LIST, method=CV_CHAIN_APPROX_SIMPLE, offset=(0, 0)) -> contours
 
-    :param image: Source, an 8-bit single-channel image. Non-zero pixels are treated as 1's. Zero pixels remain 0's, so the image is treated as  ``binary`` . You can use  :ocv:func:`compare` ,  :ocv:func:`inRange` ,  :ocv:func:`threshold` ,  :ocv:func:`adaptiveThreshold` ,  :ocv:func:`Canny` , and others to create a binary image out of a grayscale or color one. The function modifies the  ``image``  while extracting the contours.
+    :param image: Source, an 8-bit single-channel image. Non-zero pixels are treated as 1's. Zero pixels remain 0's, so the image is treated as  ``binary`` . You can use  :ocv:func:`compare` ,  :ocv:func:`inRange` ,  :ocv:func:`threshold` ,  :ocv:func:`adaptiveThreshold` ,  :ocv:func:`Canny` , and others to create a binary image out of a grayscale or color one. The function modifies the  ``image``  while extracting the contours. If mode equals to ``CV_RETR_CCOMP`` or ``CV_RETR_FLOODFILL``, the input can also be a 32-bit integer image of labels (``CV_32SC1``).
 
     :param contours: Detected contours. Each contour is stored as a vector of points.
 
@@ -165,6 +165,14 @@ The function retrieves contours from the binary image using the algorithm
 .. note:: Source ``image`` is modified by this function. Also, the function does not take into account 1-pixel border of the image (it's filled with 0's and used for neighbor analysis in the algorithm), therefore the contours touching the image border will be clipped.
 
 .. note:: If you use the new Python interface then the ``CV_`` prefix has to be omitted in contour retrieval mode and contour approximation method parameters (for example, use ``cv2.RETR_LIST`` and ``cv2.CHAIN_APPROX_NONE`` parameters). If you use the old Python interface then these parameters have the ``CV_`` prefix (for example, use ``cv.CV_RETR_LIST`` and ``cv.CV_CHAIN_APPROX_NONE``).
+
+.. note::
+
+   * An example using the findContour functionality can be found at opencv_source_code/samples/cpp/contours2.cpp
+   * An example using findContours to clean up a background segmentation result at opencv_source_code/samples/cpp/segment_objects.cpp
+
+   * (Python) An example using the findContour functionality can be found at opencv_source/samples/python2/contours.py
+   * (Python) An example of detecting squares in an image can be found at opencv_source/samples/python2/squares.py
 
 drawContours
 ----------------
@@ -246,7 +254,12 @@ The function draws contour outlines in the image if
         waitKey(0);
     }
 
+.. note::
 
+   * An example using the drawContour functionality can be found at opencv_source_code/samples/cpp/contours2.cpp
+   * An example using drawContours to clean up a background segmentation result at opencv_source_code/samples/cpp/segment_objects.cpp
+
+   * (Python) An example using the drawContour functionality can be found at opencv_source/samples/python2/contours.py
 
 approxPolyDP
 ----------------
@@ -283,7 +296,7 @@ Approximates a polygonal curve(s) with the specified precision.
 The functions ``approxPolyDP`` approximate a curve or a polygon with another curve/polygon with less vertices so that the distance between them is less or equal to the specified precision. It uses the Douglas-Peucker algorithm
 http://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm
 
-See http://code.opencv.org/projects/opencv/repository/revisions/master/entry/samples/cpp/contours.cpp for the function usage model.
+See https://github.com/Itseez/opencv/tree/master/samples/cpp/contours2.cpp for the function usage model.
 
 
 ApproxChains
@@ -345,8 +358,6 @@ Calculates the up-right bounding rectangle of a point set.
 The function calculates and returns the minimal up-right bounding rectangle for the specified point set.
 
 
-
-
 contourArea
 ---------------
 Calculates a contour area.
@@ -406,7 +417,7 @@ Finds the convex hull of a point set.
 
     :param hull_storage: Output memory storage in the old API (``cvConvexHull2`` returns a sequence containing the convex hull points or their indices).
 
-    :param clockwise: Orientation flag. If it is true, the output convex hull is oriented clockwise. Otherwise, it is oriented counter-clockwise. The usual screen coordinate system is assumed so that the origin is at the top-left corner, x axis is oriented to the right, and y axis is oriented downwards.
+    :param clockwise: Orientation flag. If it is true, the output convex hull is oriented clockwise. Otherwise, it is oriented counter-clockwise. The assumed coordinate system has its X axis pointing to the right, and its Y axis pointing upwards.
 
     :param orientation: Convex hull orientation parameter in the old API, ``CV_CLOCKWISE`` or ``CV_COUNTERCLOCKWISE``.
 
@@ -416,6 +427,10 @@ The functions find the convex hull of a 2D point set using the Sklansky's algori
 [Sklansky82]_
 that has
 *O(N logN)* complexity in the current implementation. See the OpenCV sample ``convexhull.cpp`` that demonstrates the usage of different function variants.
+
+.. note::
+
+   * An example using the convexHull functionality can be found at opencv_source_code/samples/cpp/convexhull.cpp
 
 
 convexityDefects
@@ -472,6 +487,11 @@ Fits an ellipse around a set of 2D points.
         * Nx2 numpy array (Python interface)
 
 The function calculates the ellipse that fits (in a least-squares sense) a set of 2D points best of all. It returns the rotated rectangle in which the ellipse is inscribed. The algorithm [Fitzgibbon95]_ is used.
+Developer should keep in mind that it is possible that the returned ellipse/rotatedRect data contains negative indices, due to the data points being close to the border of the containing Mat element.
+
+.. note::
+
+   * An example using the fitEllipse technique can be found at opencv_source_code/samples/cpp/fitellipse.cpp
 
 fitLine
 -----------
@@ -545,7 +565,9 @@ http://en.wikipedia.org/wiki/M-estimator
 :math:`w_i` are adjusted to be inversely proportional to
 :math:`\rho(r_i)` .
 
+.. Sample code:
 
+   * (Python) An example of robust line fitting can be found at opencv_source_code/samples/python2/fitline.py
 
 isContourConvex
 -------------------
@@ -591,7 +613,7 @@ Finds a rotated rectangle of the minimum area enclosing the input 2D point set.
         * Nx2 numpy array (Python interface)
 
 The function calculates and returns the minimum-area bounding rectangle (possibly rotated) for a specified point set. See the OpenCV sample ``minarea.cpp`` .
-
+Developer should keep in mind that the returned rotatedRect can contain negative indices when data is close the the containing Mat element boundary.
 
 
 minEnclosingCircle
@@ -706,7 +728,7 @@ See below a sample output of the function where each image pixel is tested again
 
 .. image:: pics/pointpolygon.png
 
-.. [Fitzgibbon95] Andrew W. Fitzgibbon, R.B.Fisher. *A Buyer's Guide to Conic Fitting*. Proc.5th British Machine Vision Conference, Birmingham, pp. 513-522, 1995.
+.. [Fitzgibbon95] Andrew W. Fitzgibbon, R.B.Fisher. *A Buyer's Guide to Conic Fitting*. Proc.5th British Machine Vision Conference, Birmingham, pp. 513-522, 1995. The technique used for ellipse fitting is the first one described in this summary paper.
 
 .. [Hu62] M. Hu. *Visual Pattern Recognition by Moment Invariants*, IRE Transactions on Information Theory, 8:2, pp. 179-187, 1962.
 

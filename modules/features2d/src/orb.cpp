@@ -43,7 +43,6 @@ namespace cv
 {
 
 const float HARRIS_K = 0.04f;
-const int DESCRIPTOR_SIZE = 32;
 
 /**
  * Function that computes the Harris responses in a
@@ -138,13 +137,16 @@ static void computeOrbDescriptor(const KeyPoint& kpt,
     const uchar* center = &img.at<uchar>(cvRound(kpt.pt.y), cvRound(kpt.pt.x));
     int step = (int)img.step;
 
-#if 1
-    #define GET_VALUE(idx) \
-        center[cvRound(pattern[idx].x*b + pattern[idx].y*a)*step + \
-               cvRound(pattern[idx].x*a - pattern[idx].y*b)]
-#else
     float x, y;
     int ix, iy;
+#if 1
+    #define GET_VALUE(idx) \
+           (x = pattern[idx].x*a - pattern[idx].y*b, \
+            y = pattern[idx].x*b + pattern[idx].y*a, \
+            ix = cvRound(x), \
+            iy = cvRound(y), \
+            *(center + iy*step + ix) )
+#else
     #define GET_VALUE(idx) \
         (x = pattern[idx].x*a - pattern[idx].y*b, \
         y = pattern[idx].x*b + pattern[idx].y*a, \

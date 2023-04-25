@@ -476,12 +476,19 @@ public:
         chamfer_ = new Matching(true);
     }
 
+    ~ChamferMatcher()
+    {
+        delete chamfer_;
+    }
+
     void showMatch(Mat& img, int index = 0);
     void showMatch(Mat& img, Match match_);
 
     const Matches& matching(Template&, Mat&);
 
 private:
+    ChamferMatcher(const ChamferMatcher&);
+    ChamferMatcher& operator=(const ChamferMatcher&);
     void addMatch(float cost, Point offset, const Template* tpl);
 
 
@@ -959,10 +966,8 @@ void ChamferMatcher::Matching::computeDistanceTransform(Mat& edges_img, Mat& dis
     for (int y=0;y<h;++y) {
         for (int x=0;x<w;++x) {
             // initialize
-            //if (&annotate_img!=NULL) {
-                annotate_img.at<Vec2i>(y,x)[0]=x;
-                annotate_img.at<Vec2i>(y,x)[1]=y;
-            //}
+            annotate_img.at<Vec2i>(y,x)[0]=x;
+            annotate_img.at<Vec2i>(y,x)[1]=y;
             uchar edge_val = edges_img.at<uchar>(y,x);
             if( (edge_val!=0) ) {
                 q.push(std::make_pair(x,y));
@@ -1097,13 +1102,11 @@ ChamferMatcher::Match* ChamferMatcher::Matching::localChamferDistance(Point offs
 
     float cost = (sum_distance/truncate_)/addr.size();
 
-
     float* optr = orientation_img.ptr<float>(y)+x;
     float sum_orientation = 0;
     int cnt_orientation = 0;
 
     for (size_t i=0;i<addr.size();++i) {
-
         if(addr[i] < (orientation_img.cols*orientation_img.rows) - (offset.y*orientation_img.cols + offset.x)){
                             if (tpl->orientations[i]>=-CV_PI && (*(optr+addr[i]))>=-CV_PI) {
                 sum_orientation += orientation_diff(tpl->orientations[i], (*(optr+addr[i])));

@@ -63,10 +63,8 @@ private:
     float           m_FVMin[MAX_FV_SIZE];
     float           m_FVVar[MAX_FV_SIZE];
     int             m_Dim;
-    CvBlob          m_BlobSeq[BLOB_NUM];
     int             m_Frame;
     int             m_State;
-    int             m_LastFrame;
     int             m_ClearFlag;
     void Clear()
     {
@@ -251,10 +249,8 @@ private:
     float           m_FVMin[MAX_FV_SIZE];
     float           m_FVVar[MAX_FV_SIZE];
     int             m_Dim;
-    CvBlob          m_BlobSeq[BLOB_NUM];
     int             m_Frame;
     int             m_State;
-    int             m_LastFrame;
     int             m_ClearFlag;
     void Clear()
     {
@@ -730,12 +726,12 @@ private:
         m_pFViVarRes = (int*)cvAlloc(sizeof(int)*m_Dim);
         m_Sizes = (int*)cvAlloc(sizeof(int)*m_Dim);
 
-        {   /* Create init sparce matrix: */
+        {   /* Create init sparse matrix: */
             int     i;
             for(i=0;i<m_Dim;++i)m_Sizes[i] = m_BinNum;
             m_HistMat.Realloc(m_Dim,m_Sizes,SPARSE);
             m_HistVolumeSaved = 0;
-        } /* Create init sparce matrix. */
+        } /* Create init sparse matrix. */
     } /* AllocData. */
 
     void FreeData()
@@ -1132,7 +1128,6 @@ class CvBlobTrackAnalysisSVM : public CvBlobTrackAnalysis
 {
     /*---------------- Internal functions: --------------------*/
 private:
-    CvMemStorage*       m_pMem;
     int                 m_TrackNum;
     int                 m_Frame;
     char                m_DataFileName[1024];

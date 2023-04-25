@@ -144,7 +144,11 @@ protected:
 
             depth = cvtest::randInt(rng) % (CV_64F+1);
             cn = cvtest::randInt(rng) % 4 + 1;
-            int sz[] = {cvtest::randInt(rng)%10+1, cvtest::randInt(rng)%10+1, cvtest::randInt(rng)%10+1};
+            int sz[] = {
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+            };
             MatND test_mat_nd(3, sz, CV_MAKETYPE(depth, cn));
 
             rng0.fill(test_mat_nd, CV_RAND_UNI, Scalar::all(ranges[depth][0]), Scalar::all(ranges[depth][1]));
@@ -156,8 +160,12 @@ protected:
                 multiply(test_mat_nd, test_mat_scale, test_mat_nd);
             }
 
-            int ssz[] = {cvtest::randInt(rng)%10+1, cvtest::randInt(rng)%10+1,
-                cvtest::randInt(rng)%10+1,cvtest::randInt(rng)%10+1};
+            int ssz[] = {
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+                static_cast<int>(cvtest::randInt(rng)%10+1),
+            };
             SparseMat test_sparse_mat = cvTsGetRandomSparseMat(4, ssz, cvtest::randInt(rng)%(CV_64F+1),
                                                                cvtest::randInt(rng) % 10000, 0, 100, rng);
 
@@ -390,7 +398,6 @@ protected:
         try
         {
             string fname = cv::tempfile(".xml");
-            FileStorage fs(fname, FileStorage::WRITE);
             vector<int> mi, mi2, mi3, mi4;
             vector<Mat> mv, mv2, mv3, mv4;
             Mat m(10, 9, CV_32F);
@@ -398,24 +405,59 @@ protected:
             randu(m, 0, 1);
             mi3.push_back(5);
             mv3.push_back(m);
+            Point_<float> p1(1.1f, 2.2f), op1;
+            Point3i p2(3, 4, 5), op2;
+            Size s1(6, 7), os1;
+            Complex<int> c1(9, 10), oc1;
+            Rect r1(11, 12, 13, 14), or1;
+            Vec<int, 5> v1(15, 16, 17, 18, 19), ov1;
+            Scalar sc1(20.0, 21.1, 22.2, 23.3), osc1;
+            Range g1(7, 8), og1;
+
+            FileStorage fs(fname, FileStorage::WRITE);
             fs << "mi" << mi;
             fs << "mv" << mv;
             fs << "mi3" << mi3;
             fs << "mv3" << mv3;
             fs << "empty" << empty;
+            fs << "p1" << p1;
+            fs << "p2" << p2;
+            fs << "s1" << s1;
+            fs << "c1" << c1;
+            fs << "r1" << r1;
+            fs << "v1" << v1;
+            fs << "sc1" << sc1;
+            fs << "g1" << g1;
             fs.release();
+
             fs.open(fname, FileStorage::READ);
             fs["mi"] >> mi2;
             fs["mv"] >> mv2;
             fs["mi3"] >> mi4;
             fs["mv3"] >> mv4;
             fs["empty"] >> empty;
+            fs["p1"] >> op1;
+            fs["p2"] >> op2;
+            fs["s1"] >> os1;
+            fs["c1"] >> oc1;
+            fs["r1"] >> or1;
+            fs["v1"] >> ov1;
+            fs["sc1"] >> osc1;
+            fs["g1"] >> og1;
             CV_Assert( mi2.empty() );
             CV_Assert( mv2.empty() );
             CV_Assert( norm(mi3, mi4, CV_C) == 0 );
             CV_Assert( mv4.size() == 1 );
             double n = norm(mv3[0], mv4[0], CV_C);
             CV_Assert( n == 0 );
+            CV_Assert( op1 == p1 );
+            CV_Assert( op2 == p2 );
+            CV_Assert( os1 == s1 );
+            CV_Assert( oc1 == c1 );
+            CV_Assert( or1 == r1 );
+            CV_Assert( ov1 == v1 );
+            CV_Assert( osc1 == sc1 );
+            CV_Assert( og1 == g1 );
         }
         catch(...)
         {
@@ -454,3 +496,40 @@ protected:
 TEST(Core_InputOutput, huge) { CV_BigMatrixIOTest test; test.safe_run(); }
 */
 
+TEST(Core_globbing, accuracy)
+{
+    std::string patternLena    = cvtest::TS::ptr()->get_data_path() + "lena*.*";
+    std::string patternLenaPng = cvtest::TS::ptr()->get_data_path() + "lena.png";
+
+    std::vector<String> lenas, pngLenas;
+    cv::glob(patternLena, lenas, true);
+    cv::glob(patternLenaPng, pngLenas, true);
+
+    ASSERT_GT(lenas.size(), pngLenas.size());
+
+    for (size_t i = 0; i < pngLenas.size(); ++i)
+    {
+        ASSERT_NE(std::find(lenas.begin(), lenas.end(), pngLenas[i]), lenas.end());
+    }
+}
+
+TEST(Core_InputOutput, FileStorage)
+{
+    std::string file = cv::tempfile(".xml");
+    cv::FileStorage f(file, cv::FileStorage::WRITE);
+
+    char arr[66];
+    sprintf(arr, "sprintf is hell %d", 666);
+    EXPECT_NO_THROW(f << arr);
+}
+
+TEST(Core_InputOutput, FileStorageKey)
+{
+    cv::FileStorage f("dummy.yml", cv::FileStorage::WRITE | cv::FileStorage::MEMORY);
+
+    EXPECT_NO_THROW(f << "key1" << "value1");
+    EXPECT_NO_THROW(f << "_key2" << "value2");
+    EXPECT_NO_THROW(f << "key_3" << "value3");
+    const std::string expected = "%YAML:1.0\nkey1: value1\n_key2: value2\nkey_3: value3\n";
+    ASSERT_STREQ(f.releaseAndGetString().c_str(), expected.c_str());
+}

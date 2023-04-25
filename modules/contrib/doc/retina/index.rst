@@ -63,6 +63,11 @@ The retina can be settled up with various parameters, by default, the retina can
     void activateContoursProcessing (const bool activate);
   };
 
+.. Sample code::
+
+   * An example on retina tone mapping can be found at opencv_source_code/samples/cpp/OpenEXRimages_HDR_Retina_toneMapping.cpp
+   * An example on retina tone mapping on video input can be found at opencv_source_code/samples/cpp/OpenEXRimages_HDR_Retina_toneMapping.cpp
+   * A complete example illustrating the retina interface can be found at opencv_source_code/samples/cpp/retinaDemo.cpp
 
 Description
 +++++++++++
@@ -116,13 +121,13 @@ Take a look at the provided C++ examples provided with OpenCV :
    **Note :** This demo generates the file *RetinaDefaultParameters.xml* which contains the default parameters of the retina. Then, rename this as *RetinaSpecificParameters.xml*, adjust the parameters the way you want and reload the program to check the effect.
 
 
-* **samples/cpp/OpenEXRimages_HighDynamicRange_Retina_toneMapping.cpp** shows how to use the retina to perform High Dynamic Range (HDR) luminance compression
+* **samples/cpp/OpenEXRimages_HDR_Retina_toneMapping.cpp** shows how to use the retina to perform High Dynamic Range (HDR) luminance compression
 
    Then, take a HDR image using bracketing with your camera and generate an OpenEXR image and then process it using the demo.
 
    Typical use, supposing that you have the OpenEXR image *memorial.exr* (present in the samples/cpp/ folder)
 
-   **OpenCVReleaseFolder/bin/OpenEXRimages_HighDynamicRange_Retina_toneMapping memorial.exr**
+   **OpenCVReleaseFolder/bin/OpenEXRimages_HDR_Retina_toneMapping memorial.exr**
 
       Note that some sliders are made available to allow you to play with luminance compression.
 
@@ -288,7 +293,7 @@ Retina::write
 Retina::setupIPLMagnoChannel
 ++++++++++++++++++++++++++++
 
-.. ocv:function:: void Retina::setupIPLMagnoChannel(const bool normaliseOutput = true, const float parasolCells_beta = 0, const float parasolCells_tau = 0, const float parasolCells_k = 7, const float amacrinCellsTemporalCutFrequency = 1.2, const float V0CompressionParameter = 0.95, const float localAdaptintegration_tau = 0, const float localAdaptintegration_k = 7 )
+.. ocv:function:: void Retina::setupIPLMagnoChannel(const bool normaliseOutput = true, const float parasolCells_beta = 0, const float parasolCells_tau = 0, const float parasolCells_k = 7, const float amacrinCellsTemporalCutFrequency = 1.2f, const float V0CompressionParameter = 0.95f, const float localAdaptintegration_tau = 0, const float localAdaptintegration_k = 7 )
 
     Set parameters values for the Inner Plexiform Layer (IPL) magnocellular channel this channel processes signals output from OPL processing stage in peripheral vision, it allows motion information enhancement. It is decorrelated from the details channel. See reference papers for more details.
 
@@ -304,7 +309,7 @@ Retina::setupIPLMagnoChannel
 Retina::setupOPLandIPLParvoChannel
 ++++++++++++++++++++++++++++++++++
 
-.. ocv:function:: void Retina::setupOPLandIPLParvoChannel(const bool colorMode = true, const bool normaliseOutput = true, const float photoreceptorsLocalAdaptationSensitivity = 0.7, const float photoreceptorsTemporalConstant = 0.5, const float photoreceptorsSpatialConstant = 0.53, const float horizontalCellsGain = 0, const float HcellsTemporalConstant = 1, const float HcellsSpatialConstant = 7, const float ganglionCellsSensitivity = 0.7 )
+.. ocv:function:: void Retina::setupOPLandIPLParvoChannel(const bool colorMode = true, const bool normaliseOutput = true, const float photoreceptorsLocalAdaptationSensitivity = 0.7f, const float photoreceptorsTemporalConstant = 0.5f, const float photoreceptorsSpatialConstant = 0.53f, const float horizontalCellsGain = 0, const float HcellsTemporalConstant = 1, const float HcellsSpatialConstant = 7, const float ganglionCellsSensitivity = 0.7f )
 
     Setup the OPL and IPL parvo channels (see biologocal model) OPL is referred as Outer Plexiform Layer of the retina, it allows the spatio-temporal filtering which withens the spectrum and reduces spatio-temporal noise while attenuating global luminance (low frequency energy) IPL parvo is the OPL next processing stage, it refers to a part of the Inner Plexiform layer of the retina, it allows high contours sensitivity in foveal vision. See reference papers for more informations.
 

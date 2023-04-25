@@ -2,6 +2,7 @@
  *  cap_ios_abstract_camera.mm
  *  For iOS video I/O
  *  by Eduard Feicho on 29/07/12
+ *  by Alexander Shishkov on 17/07/13
  *  Copyright 2012. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -149,6 +150,7 @@
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+    [super dealloc];
 }
 
 
@@ -192,6 +194,14 @@
     // Release any retained subviews of the main view.
     // e.g. self.myOutlet = nil;
 
+    for (AVCaptureInput *input in self.captureSession.inputs) {
+        [self.captureSession removeInput:input];
+    }
+
+    for (AVCaptureOutput *output in self.captureSession.outputs) {
+        [self.captureSession removeOutput:output];
+    }
+
     [self.captureSession stopRunning];
     self.captureSession = nil;
     self.captureVideoPreviewLayer = nil;
@@ -225,6 +235,7 @@
 
 - (void)deviceOrientationDidChange:(NSNotification*)notification
 {
+    (void)notification;
     UIDeviceOrientation orientation = [UIDevice currentDevice].orientation;
 
     switch (orientation)
@@ -241,7 +252,7 @@
         default:
             break;
     }
-    NSLog(@"deviceOrientationDidChange: %d", orientation);
+    NSLog(@"deviceOrientationDidChange: %d", (int)orientation);
 
     [self updateOrientation];
 }
@@ -277,8 +288,20 @@
 {
     self.captureVideoPreviewLayer = [[AVCaptureVideoPreviewLayer alloc] initWithSession:self.captureSession];
 
-    if ([self.captureVideoPreviewLayer isOrientationSupported]) {
-        [self.captureVideoPreviewLayer setOrientation:self.defaultAVCaptureVideoOrientation];
+    if ([self.captureVideoPreviewLayer respondsToSelector:@selector(connection)])
+    {
+        if ([self.captureVideoPreviewLayer.connection isVideoOrientationSupported])
+        {
+            [self.captureVideoPreviewLayer.connection setVideoOrientation:self.defaultAVCaptureVideoOrientation];
+        }
+    }
+    else
+    {
+        // Deprecated in 6.0; here for backward compatibility
+        if ([self.captureVideoPreviewLayer isOrientationSupported])
+        {
+            [self.captureVideoPreviewLayer setOrientation:self.defaultAVCaptureVideoOrientation];
+        }
     }
 
     if (parentView != nil) {
@@ -288,9 +311,6 @@
     }
     NSLog(@"[Camera] created AVCaptureVideoPreviewLayer");
 }
-
-
-
 
 - (void)setDesiredCameraPosition:(AVCaptureDevicePosition)desiredPosition;
 {
@@ -306,7 +326,7 @@
 
             // support for autofocus
             if ([device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
-                NSError *error = nil;
+                error = nil;
                 if ([device lockForConfiguration:&error]) {
                     device.focusMode = AVCaptureFocusModeContinuousAutoFocus;
                     [device unlockForConfiguration];
@@ -402,6 +422,90 @@
     } else {
         self.imageWidth = 640;
         self.imageHeight = 480;
+    }
+}
+
+- (void)lockFocus;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isFocusModeSupported:AVCaptureFocusModeLocked]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.focusMode = AVCaptureFocusModeLocked;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for locked focus configuration %@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void) unlockFocus;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.focusMode = AVCaptureFocusModeContinuousAutoFocus;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for autofocus configuration %@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void)lockExposure;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isExposureModeSupported:AVCaptureExposureModeLocked]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.exposureMode = AVCaptureExposureModeLocked;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for locked exposure configuration %@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void) unlockExposure;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.exposureMode = AVCaptureExposureModeContinuousAutoExposure;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for autoexposure configuration %@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void)lockBalance;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeLocked]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.whiteBalanceMode = AVCaptureWhiteBalanceModeLocked;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for locked white balance configuration %@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void) unlockBalance;
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if ([device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            device.whiteBalanceMode = AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance;
+            [device unlockForConfiguration];
+        } else {
+            NSLog(@"unable to lock device for auto white balance configuration %@", [error localizedDescription]);
+        }
     }
 }
 

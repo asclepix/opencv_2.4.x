@@ -60,6 +60,8 @@
 
 #else
 #include <unistd.h>
+#include <signal.h>
+#include <setjmp.h>
 #endif
 
 namespace cvtest
@@ -109,9 +111,6 @@ static void SEHTranslator( unsigned int /*u*/, EXCEPTION_POINTERS* pExp )
 #endif
 
 #else
-
-#include <signal.h>
-#include <setjmp.h>
 
 static const int tsSigId[] = { SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT, -1 };
 
@@ -324,6 +323,7 @@ BadArgTest::BadArgTest()
     progress        = -1;
     test_case_idx   = -1;
     freq            = cv::getTickFrequency();
+    t               = -1;
     // oldErrorCbk     = 0;
     // oldErrorCbkData = 0;
 }
@@ -339,6 +339,7 @@ int BadArgTest::run_test_case( int expected_code, const string& _descr )
     {
         test_case_idx = 0;
         progress      = 0;
+        t             = 0;
         dt            = 0;
     }
     else

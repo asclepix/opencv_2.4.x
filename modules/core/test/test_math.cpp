@@ -1353,7 +1353,7 @@ void Core_DetTest::get_test_array_types_and_sizes( int test_case_idx, vector<vec
 {
     Base::get_test_array_types_and_sizes( test_case_idx, sizes, types );
 
-    sizes[INPUT][0].width = sizes[INPUT][0].height = sizes[INPUT][0].height;
+    sizes[INPUT][0].width = sizes[INPUT][0].height;
     sizes[TEMP][0] = sizes[INPUT][0];
     types[TEMP][0] = CV_64FC1;
 }
@@ -2329,6 +2329,17 @@ void Core_SolvePolyTest::run( int )
             pass = pass && div < err_eps;
         }
 
+        //test bug #5623 - solves equation x^3 = 0
+        cv::Mat coeffs_5623(4, 1, CV_64FC1);
+        cv::Mat r_5623(3, 1, CV_64FC2);
+        coeffs_5623.at<double>(0) = 1;
+        coeffs_5623.at<double>(1) = 0;
+        coeffs_5623.at<double>(2) = 0;
+        coeffs_5623.at<double>(3) = 0;
+        double prec_5623 = cv::solveCubic(coeffs_5623, r_5623);
+        pass = pass && r_5623.at<double>(0) == 0 && r_5623.at<double>(1) == 0 && r_5623.at<double>(2) == 0;
+        pass = pass && prec_5623 == 1;
+
         if (!pass)
         {
             ts->set_failed_test_info(cvtest::TS::FAIL_INVALID_OUTPUT);
@@ -2345,6 +2356,55 @@ void Core_SolvePolyTest::run( int )
                 ts->printf( cvtest::TS::LOG, "ar[%d]=(%g, %g)\n", j, ar[j].real(), ar[j].imag());
             break;
         }
+    }
+}
+
+template<typename T>
+static void checkRoot(Mat& r, T re, T im)
+{
+    for (int i = 0; i < r.cols*r.rows; i++)
+    {
+        Vec<T, 2> v = *(Vec<T, 2>*)r.ptr(i);
+        if (fabs(re - v[0]) < 1e-6 && fabs(im - v[1]) < 1e-6)
+        {
+            v[0] = std::numeric_limits<T>::quiet_NaN();
+            v[1] = std::numeric_limits<T>::quiet_NaN();
+            return;
+        }
+    }
+    GTEST_NONFATAL_FAILURE_("Can't find root") << "(" << re << ", " << im << ")";
+}
+TEST(Core_SolvePoly, regression_5599)
+{
+    // x^4 - x^2 = 0, roots: 1, -1, 0, 0
+    cv::Mat coefs = (cv::Mat_<float>(1,5) << 0, 0, -1, 0, 1 );
+    {
+        cv::Mat r;
+        double prec;
+        prec = cv::solvePoly(coefs, r);
+        EXPECT_LE(prec, 1e-6);
+        EXPECT_EQ(4u, r.total());
+        //std::cout << "Preciseness = " << prec << std::endl;
+        //std::cout << "roots:\n" << r << "\n" << std::endl;
+        ASSERT_EQ(CV_32FC2, r.type());
+        checkRoot<float>(r, 1, 0);
+        checkRoot<float>(r, -1, 0);
+        checkRoot<float>(r, 0, 0);
+        checkRoot<float>(r, 0, 0);
+    }
+    // x^2 - 2x + 1 = 0,  roots: 1, 1
+    coefs = (cv::Mat_<float>(1,3) << 1, -2, 1 );
+    {
+        cv::Mat r;
+        double prec;
+        prec = cv::solvePoly(coefs, r);
+        EXPECT_LE(prec, 1e-6);
+        EXPECT_EQ(2u, r.total());
+        //std::cout << "Preciseness = " << prec << std::endl;
+        //std::cout << "roots:\n" << r << "\n" << std::endl;
+        ASSERT_EQ(CV_32FC2, r.type());
+        checkRoot<float>(r, 1, 0);
+        checkRoot<float>(r, 1, 0);
     }
 }
 
@@ -2392,16 +2452,14 @@ TYPED_TEST_P(Core_CheckRange, Negative)
     double min_bound = 4.5;
     double max_bound = 16.0;
 
-    TypeParam data[] = {5, 10, 15, 4, 10 ,2, 8, 12, 14};
+    TypeParam data[] = {5, 10, 15, 4, 10, 2, 8, 12, 14};
     cv::Mat src = cv::Mat(3,3, cv::DataDepth<TypeParam>::value, data);
 
-    cv::Point* bad_pt = new cv::Point(0, 0);
+    cv::Point bad_pt(0, 0);
 
-    ASSERT_FALSE(checkRange(src, true, bad_pt, min_bound, max_bound));
-    ASSERT_EQ(bad_pt->x,0);
-    ASSERT_EQ(bad_pt->y,1);
-
-    delete bad_pt;
+    ASSERT_FALSE(checkRange(src, true, &bad_pt, min_bound, max_bound));
+    ASSERT_EQ(bad_pt.x, 0);
+    ASSERT_EQ(bad_pt.y, 1);
 }
 
 TYPED_TEST_P(Core_CheckRange, Positive)
@@ -2409,16 +2467,14 @@ TYPED_TEST_P(Core_CheckRange, Positive)
     double min_bound = -1;
     double max_bound = 16.0;
 
-    TypeParam data[] = {5, 10, 15, 4, 10 ,2, 8, 12, 14};
+    TypeParam data[] = {5, 10, 15, 4, 10, 2, 8, 12, 14};
     cv::Mat src = cv::Mat(3,3, cv::DataDepth<TypeParam>::value, data);
 
-    cv::Point* bad_pt = new cv::Point(0, 0);
+    cv::Point bad_pt(0, 0);
 
-    ASSERT_TRUE(checkRange(src, true, bad_pt, min_bound, max_bound));
-    ASSERT_EQ(bad_pt->x,0);
-    ASSERT_EQ(bad_pt->y,0);
-
-    delete bad_pt;
+    ASSERT_TRUE(checkRange(src, true, &bad_pt, min_bound, max_bound));
+    ASSERT_EQ(bad_pt.x, 0);
+    ASSERT_EQ(bad_pt.y, 0);
 }
 
 TYPED_TEST_P(Core_CheckRange, Bounds)
@@ -2426,16 +2482,14 @@ TYPED_TEST_P(Core_CheckRange, Bounds)
     double min_bound = 24.5;
     double max_bound = 1.0;
 
-    TypeParam data[] = {5, 10, 15, 4, 10 ,2, 8, 12, 14};
+    TypeParam data[] = {5, 10, 15, 4, 10, 2, 8, 12, 14};
     cv::Mat src = cv::Mat(3,3, cv::DataDepth<TypeParam>::value, data);
 
-    cv::Point* bad_pt = new cv::Point(0, 0);
+    cv::Point bad_pt(0, 0);
 
-    ASSERT_FALSE(checkRange(src, true, bad_pt, min_bound, max_bound));
-    ASSERT_EQ(bad_pt->x,0);
-    ASSERT_EQ(bad_pt->y,0);
-
-    delete bad_pt;
+    ASSERT_FALSE(checkRange(src, true, &bad_pt, min_bound, max_bound));
+    ASSERT_EQ(bad_pt.x, 0);
+    ASSERT_EQ(bad_pt.y, 0);
 }
 
 TYPED_TEST_P(Core_CheckRange, Zero)
@@ -2457,7 +2511,7 @@ TEST(Core_Invert, small)
 {
     cv::Mat a = (cv::Mat_<float>(3,3) << 2.42104644730331, 1.81444796521479, -3.98072565304758, 0, 7.08389214348967e-3, 5.55326770986007e-3, 0,0, 7.44556154284261e-3);
     //cv::randu(a, -1, 1);
-    
+
     cv::Mat b = a.t()*a;
     cv::Mat c, i = Mat_<float>::eye(3, 3);
     cv::invert(b, c, cv::DECOMP_LU); //std::cout << b*c << std::endl;
@@ -2487,8 +2541,46 @@ TEST(Core_SVBkSb, accuracy) { Core_SVBkSbTest test; test.safe_run(); }
 TEST(Core_Trace, accuracy) { Core_TraceTest test; test.safe_run(); }
 TEST(Core_SolvePoly, accuracy) { Core_SolvePolyTest test; test.safe_run(); }
 
+
+TEST(Core_SVD, flt)
+{
+    float a[] = {
+    1.23377746e+011f, -7.05490125e+010f, -4.18380882e+010f, -11693456.f,
+    -39091328.f, 77492224.f, -7.05490125e+010f, 2.36211143e+011f,
+    -3.51093473e+010f, 70773408.f, -4.83386156e+005f, -129560368.f,
+    -4.18380882e+010f, -3.51093473e+010f, 9.25311222e+010f, -49052424.f,
+    43922752.f, 12176842.f, -11693456.f, 70773408.f, -49052424.f, 8.40836094e+004f,
+    5.17475293e+003f, -1.16122949e+004f, -39091328.f, -4.83386156e+005f,
+    43922752.f, 5.17475293e+003f, 5.16047969e+004f, 5.68887842e+003f, 77492224.f,
+    -129560368.f, 12176842.f, -1.16122949e+004f, 5.68887842e+003f,
+    1.28060578e+005f
+    };
+
+    float b[] = {
+    283751232.f, 2.61604198e+009f, -745033216.f, 2.31125625e+005f,
+    -4.52429188e+005f, -1.37596525e+006f
+    };
+
+    Mat A(6, 6, CV_32F, a);
+    Mat B(6, 1, CV_32F, b);
+    Mat X, B1;
+    solve(A, B, X, DECOMP_SVD);
+    B1 = A*X;
+    EXPECT_LE(norm(B1, B, NORM_L2 + NORM_RELATIVE), FLT_EPSILON*10);
+}
+
+
 // TODO: eigenvv, invsqrt, cbrt, fastarctan, (round, floor, ceil(?)),
 
+enum
+{
+    MAT_N_DIM_C1,
+    MAT_N_1_CDIM,
+    MAT_1_N_CDIM,
+    MAT_N_DIM_C1_NONCONT,
+    MAT_N_1_CDIM_NONCONT,
+    VECTOR
+};
 
 class CV_KMeansSingularTest : public cvtest::BaseTest
 {
@@ -2496,7 +2588,7 @@ public:
     CV_KMeansSingularTest() {}
     ~CV_KMeansSingularTest() {}
 protected:
-    void run(int)
+    void run(int inVariant)
     {
         int i, iter = 0, N = 0, N0 = 0, K = 0, dims = 0;
         Mat labels;
@@ -2508,20 +2600,70 @@ protected:
             for( iter = 0; iter < maxIter; iter++ )
             {
                 ts->update_context(this, iter, true);
-                dims = rng.uniform(1, MAX_DIM+1);
+                dims = rng.uniform(inVariant == MAT_1_N_CDIM ? 2 : 1, MAX_DIM+1);
                 N = rng.uniform(1, MAX_POINTS+1);
                 N0 = rng.uniform(1, MAX(N/10, 2));
                 K = rng.uniform(1, N+1);
 
-                Mat data0(N0, dims, CV_32F);
-                rng.fill(data0, RNG::UNIFORM, -1, 1);
+                if (inVariant == VECTOR)
+                {
+                    dims = 2;
 
-                Mat data(N, dims, CV_32F);
-                for( i = 0; i < N; i++ )
-                    data0.row(rng.uniform(0, N0)).copyTo(data.row(i));
+                    std::vector<cv::Point2f> data0(N0);
+                    rng.fill(data0, RNG::UNIFORM, -1, 1);
 
-                kmeans(data, K, labels, TermCriteria(TermCriteria::MAX_ITER+TermCriteria::EPS, 30, 0),
-                       5, KMEANS_PP_CENTERS);
+                    std::vector<cv::Point2f> data(N);
+                    for( i = 0; i < N; i++ )
+                        data[i] = data0[rng.uniform(0, N0)];
+
+                    kmeans(data, K, labels, TermCriteria(TermCriteria::MAX_ITER+TermCriteria::EPS, 30, 0),
+                           5, KMEANS_PP_CENTERS);
+                }
+                else
+                {
+                    Mat data0(N0, dims, CV_32F);
+                    rng.fill(data0, RNG::UNIFORM, -1, 1);
+
+                    Mat data;
+
+                    switch (inVariant)
+                    {
+                    case MAT_N_DIM_C1:
+                        data.create(N, dims, CV_32F);
+                        for( i = 0; i < N; i++ )
+                            data0.row(rng.uniform(0, N0)).copyTo(data.row(i));
+                        break;
+
+                    case MAT_N_1_CDIM:
+                        data.create(N, 1, CV_32FC(dims));
+                        for( i = 0; i < N; i++ )
+                            memcpy(data.ptr(i), data0.ptr(rng.uniform(0, N0)), dims * sizeof(float));
+                        break;
+
+                    case MAT_1_N_CDIM:
+                        data.create(1, N, CV_32FC(dims));
+                        for( i = 0; i < N; i++ )
+                            memcpy(data.data + i * dims * sizeof(float), data0.ptr(rng.uniform(0, N0)), dims * sizeof(float));
+                        break;
+
+                    case MAT_N_DIM_C1_NONCONT:
+                        data.create(N, dims + 5, CV_32F);
+                        data = data(Range(0, N), Range(0, dims));
+                        for( i = 0; i < N; i++ )
+                            data0.row(rng.uniform(0, N0)).copyTo(data.row(i));
+                        break;
+
+                    case MAT_N_1_CDIM_NONCONT:
+                        data.create(N, 3, CV_32FC(dims));
+                        data = data.colRange(0, 1);
+                        for( i = 0; i < N; i++ )
+                            memcpy(data.ptr(i), data0.ptr(rng.uniform(0, N0)), dims * sizeof(float));
+                        break;
+                    }
+
+                    kmeans(data, K, labels, TermCriteria(TermCriteria::MAX_ITER+TermCriteria::EPS, 30, 0),
+                           5, KMEANS_PP_CENTERS);
+                }
 
                 Mat hist(K, 1, CV_32S, Scalar(0));
                 for( i = 0; i < N; i++ )
@@ -2545,7 +2687,19 @@ protected:
     }
 };
 
-TEST(Core_KMeans, singular) { CV_KMeansSingularTest test; test.safe_run(); }
+TEST(Core_KMeans, singular) { CV_KMeansSingularTest test; test.safe_run(MAT_N_DIM_C1); }
+
+CV_ENUM(KMeansInputVariant, MAT_N_DIM_C1, MAT_N_1_CDIM, MAT_1_N_CDIM, MAT_N_DIM_C1_NONCONT, MAT_N_1_CDIM_NONCONT, VECTOR)
+
+typedef testing::TestWithParam<KMeansInputVariant> Core_KMeans_InputVariants;
+
+TEST_P(Core_KMeans_InputVariants, singular)
+{
+    CV_KMeansSingularTest test;
+    test.safe_run(GetParam());
+}
+
+INSTANTIATE_TEST_CASE_P(AllVariants, Core_KMeans_InputVariants, KMeansInputVariant::all());
 
 TEST(CovariationMatrixVectorOfMat, accuracy)
 {
@@ -2614,4 +2768,3 @@ TEST(CovariationMatrixVectorOfMatWithMean, accuracy)
 }
 
 /* End of file. */
-

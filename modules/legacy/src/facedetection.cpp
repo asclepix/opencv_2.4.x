@@ -491,7 +491,7 @@ FaceDetectionList::~FaceDetectionList()
 int FaceDetectionList::AddElem(Face * pFace)
 {
     new FaceDetectionListElem(pFace,m_pHead);
-    return m_FacesCount++;
+    return (int)m_FacesCount++;
 }//FaceDetectionList::AddElem(Face * pFace)
 
 Face * FaceDetectionList::GetData()
@@ -499,5 +499,3 @@ Face * FaceDetectionList::GetData()
     m_pCurElem = m_pCurElem->m_pNext;
     return m_pCurElem->m_pFace;
 }//Face * FaceDetectionList::GetData()
-
-

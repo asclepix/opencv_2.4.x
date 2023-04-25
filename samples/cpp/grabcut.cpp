@@ -21,10 +21,10 @@ static void help()
         "\tleft mouse button - set rectangle\n"
         "\n"
         "\tCTRL+left mouse button - set GC_BGD pixels\n"
-        "\tSHIFT+left mouse button - set CG_FGD pixels\n"
+        "\tSHIFT+left mouse button - set GC_FGD pixels\n"
         "\n"
         "\tCTRL+right mouse button - set GC_PR_BGD pixels\n"
-        "\tSHIFT+right mouse button - set CG_PR_FGD pixels\n" << endl;
+        "\tSHIFT+right mouse button - set GC_PR_FGD pixels\n" << endl;
 }
 
 const Scalar RED = Scalar(0,0,255);
@@ -296,15 +296,15 @@ int main( int argc, char** argv )
     help();
 
     const string winName = "image";
-    cvNamedWindow( winName.c_str(), CV_WINDOW_AUTOSIZE );
-    cvSetMouseCallback( winName.c_str(), on_mouse, 0 );
+    namedWindow( winName, WINDOW_AUTOSIZE );
+    setMouseCallback( winName, on_mouse, 0 );
 
     gcapp.setImageAndWinName( image, winName );
     gcapp.showImage();
 
     for(;;)
     {
-        int c = cvWaitKey(0);
+        int c = waitKey(0);
         switch( (char) c )
         {
         case '\x1b':
@@ -331,6 +331,6 @@ int main( int argc, char** argv )
     }
 
 exit_main:
-    cvDestroyWindow( winName.c_str() );
+    destroyWindow( winName );
     return 0;
 }

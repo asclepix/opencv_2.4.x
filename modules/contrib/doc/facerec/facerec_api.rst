@@ -3,6 +3,12 @@ FaceRecognizer
 
 .. highlight:: cpp
 
+.. Sample code::
+
+   * An example using the FaceRecognizer class can be found at opencv_source_code/samples/cpp/facerec_demo.cpp
+
+   * (Python)  An example using the FaceRecognizer class can be found at opencv_source_code/samples/python2/facerec_demo.py
+
 FaceRecognizer
 --------------
 
@@ -40,6 +46,15 @@ a unified access to all face recongition algorithms in OpenCV. ::
 
       // Deserializes this object from a given cv::FileStorage.
       virtual void load(const FileStorage& fs) = 0;
+
+      // Sets additional information as pairs label - info.
+      void setLabelsInfo(const std::map<int, string>& labelsInfo);
+
+      // Gets string information by label
+      string getLabelInfo(const int &label);
+
+      // Gets labels by string
+      vector<int> getLabelsByString(const string& str);
   };
 
 
@@ -64,10 +79,14 @@ Moreover every :ocv:class:`FaceRecognizer` supports the:
 
 * **Loading/Saving** the model state from/to a given XML or YAML.
 
+* **Setting/Getting labels info**, that is storaged as a string. String labels info is useful for keeping names of the recognized people.
+
+.. note:: When using the FaceRecognizer interface in combination with Python, please stick to Python 2. Some underlying scripts like create_csv will not work in other versions, like Python 3.
+
 Setting the Thresholds
 +++++++++++++++++++++++
 
-Sometimes you run into the situation, when you want to apply a threshold on the prediction. A common scenario in face recognition is to tell, wether a face belongs to the training dataset or if it is unknown. You might wonder, why there's no public API in :ocv:class:`FaceRecognizer` to set the threshold for the prediction, but rest assured: It's supported. It just means there's no generic way in an abstract class to provide an interface for setting/getting the thresholds of *every possible* :ocv:class:`FaceRecognizer` algorithm. The appropriate place to set the thresholds is in the constructor of the specific :ocv:class:`FaceRecognizer` and since every :ocv:class:`FaceRecognizer` is a :ocv:class:`Algorithm` (see above), you can get/set the thresholds at runtime!
+Sometimes you run into the situation, when you want to apply a threshold on the prediction. A common scenario in face recognition is to tell, whether a face belongs to the training dataset or if it is unknown. You might wonder, why there's no public API in :ocv:class:`FaceRecognizer` to set the threshold for the prediction, but rest assured: It's supported. It just means there's no generic way in an abstract class to provide an interface for setting/getting the thresholds of *every possible* :ocv:class:`FaceRecognizer` algorithm. The appropriate place to set the thresholds is in the constructor of the specific :ocv:class:`FaceRecognizer` and since every :ocv:class:`FaceRecognizer` is a :ocv:class:`Algorithm` (see above), you can get/set the thresholds at runtime!
 
 Here is an example of setting a threshold for the Eigenfaces method, when creating the model:
 
@@ -284,6 +303,30 @@ Loads a persisted model and state from a given XML or YAML file . Every
 to enable loading the model state. ``FaceRecognizer::load(FileStorage& fs)`` in
 turn gets called by ``FaceRecognizer::load(const string& filename)``, to ease
 saving a model.
+
+FaceRecognizer::setLabelsInfo
+-----------------------------
+
+Sets string information about labels into the model.
+.. ocv:function:: void FaceRecognizer::setLabelsInfo(const std::map<int, string>& labelsInfo)
+
+Information about the label loads as a pair "label id - string info".
+
+FaceRecognizer::getLabelInfo
+----------------------------
+
+Gets string information by label.
+.. ocv:function:: string FaceRecognizer::getLabelInfo(const int &label)
+
+If an unknown label id is provided or there is no label information assosiated with the specified label id the method returns an empty string.
+
+FaceRecognizer::getLabelsByString
+---------------------------------
+Gets vector of labels by string.
+
+.. ocv:function:: vector<int> FaceRecognizer::getLabelsByString(const string& str)
+
+The function searches for the labels containing the specified substring in the associated string info.
 
 createEigenFaceRecognizer
 -------------------------

@@ -92,7 +92,7 @@ void CvMLData::free_train_test_idx()
 {
     cvReleaseMat( &train_sample_idx );
     cvReleaseMat( &test_sample_idx );
-    sample_idx = 0;
+    cvFree(&sample_idx);
 }
 
 void CvMLData::clear()
@@ -209,6 +209,7 @@ int CvMLData::read_csv(const char* filename)
             if (!token)
             {
                 fclose(file);
+                delete [] el_ptr;
                 return -1;
             }
         }

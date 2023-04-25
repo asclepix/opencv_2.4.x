@@ -25,11 +25,13 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
 
     SET(_PCH_include_prefix "-I")
     SET(_PCH_isystem_prefix "-isystem")
+    SET(_PCH_define_prefix "-D")
 
 ELSEIF(CMAKE_GENERATOR MATCHES "^Visual.*$")
     SET(PCHSupport_FOUND TRUE)
     SET(_PCH_include_prefix "/I")
     SET(_PCH_isystem_prefix "/I")
+    SET(_PCH_define_prefix "/D")
 ELSE()
     SET(PCHSupport_FOUND FALSE)
 ENDIF()
@@ -39,12 +41,30 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
     STRING(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" _flags_var_name)
     SET(${_out_compile_flags} ${${_flags_var_name}} )
 
+    GET_TARGET_PROPERTY(_targetPIC ${_PCH_current_target} POSITION_INDEPENDENT_CODE)
+    if (_targetPIC AND CMAKE_CXX_COMPILE_OPTIONS_PIC)
+      LIST(APPEND ${_out_compile_flags} "${CMAKE_CXX_COMPILE_OPTIONS_PIC}")
+    elseif(CMAKE_COMPILER_IS_GNUCXX)
+      GET_TARGET_PROPERTY(_targetType ${_PCH_current_target} TYPE)
+      IF(${_targetType} STREQUAL SHARED_LIBRARY AND NOT WIN32)
+        LIST(APPEND ${_out_compile_flags} "-fPIC")
+      ENDIF()
+    endif()
+
     IF(CMAKE_COMPILER_IS_GNUCXX)
 
-        GET_TARGET_PROPERTY(_targetType ${_PCH_current_target} TYPE)
-        IF(${_targetType} STREQUAL SHARED_LIBRARY AND NOT WIN32)
-            LIST(APPEND ${_out_compile_flags} "-fPIC")
-        ENDIF()
+        GET_PROPERTY(_definitions DIRECTORY PROPERTY COMPILE_DEFINITIONS)
+        if(_definitions)
+          foreach(_def ${_definitions})
+            LIST(APPEND ${_out_compile_flags} "\"-D${_def}\"")
+          endforeach()
+        endif()
+        GET_TARGET_PROPERTY(_target_definitions ${_PCH_current_target} COMPILE_DEFINITIONS)
+        if(_target_definitions)
+          foreach(_def ${_target_definitions})
+            LIST(APPEND ${_out_compile_flags} "\"-D${_def}\"")
+          endforeach()
+        endif()
 
     ELSE()
         ## TODO ... ? or does it work out of the box
@@ -59,11 +79,15 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
         endif()
     ENDFOREACH(item)
 
-    GET_DIRECTORY_PROPERTY(_directory_flags DEFINITIONS)
-    GET_DIRECTORY_PROPERTY(_global_definitions DIRECTORY ${OpenCV_SOURCE_DIR} DEFINITIONS)
-    #MESSAGE("_directory_flags ${_directory_flags} ${_global_definitions}" )
-    LIST(APPEND ${_out_compile_flags} ${_directory_flags})
-    LIST(APPEND ${_out_compile_flags} ${_global_definitions})
+    get_target_property(DIRINC ${_PCH_current_target} INCLUDE_DIRECTORIES )
+    FOREACH(item ${DIRINC})
+        if(item MATCHES "^${OpenCV_SOURCE_DIR}/modules/")
+          LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}\"${item}\"")
+        else()
+          LIST(APPEND ${_out_compile_flags} "${_PCH_isystem_prefix}\"${item}\"")
+        endif()
+    ENDFOREACH(item)
+
     LIST(APPEND ${_out_compile_flags} ${CMAKE_CXX_FLAGS})
 
     SEPARATE_ARGUMENTS(${_out_compile_flags})
@@ -145,9 +169,9 @@ MACRO(_PCH_GET_TARGET_COMPILE_FLAGS _cflags  _header_name _pch_path _dowarn )
         # if you have different versions of the headers for different build types
         # you may set _pch_dowarn
         IF (_dowarn)
-            SET(${_cflags} "${PCH_ADDITIONAL_COMPILER_FLAGS} -include \"${CMAKE_CURRENT_BINARY_DIR}/${_header_name}\" -Winvalid-pch " )
+            SET(${_cflags} "${PCH_ADDITIONAL_COMPILER_FLAGS} -Winvalid-pch " )
         ELSE (_dowarn)
-            SET(${_cflags} "${PCH_ADDITIONAL_COMPILER_FLAGS} -include \"${CMAKE_CURRENT_BINARY_DIR}/${_header_name}\" " )
+            SET(${_cflags} "${PCH_ADDITIONAL_COMPILER_FLAGS} " )
         ENDIF (_dowarn)
 
     ELSE(CMAKE_COMPILER_IS_GNUCXX)
@@ -237,12 +261,23 @@ MACRO(ADD_PRECOMPILED_HEADER _targetName _input)
 
     _PCH_GET_COMPILE_FLAGS(_compile_FLAGS)
 
+    get_target_property(type ${_targetName} TYPE)
+    if(type STREQUAL "SHARED_LIBRARY")
+        get_target_property(__DEFINES ${_targetName} DEFINE_SYMBOL)
+        if(NOT __DEFINES MATCHES __DEFINES-NOTFOUND)
+            list(APPEND _compile_FLAGS "${_PCH_define_prefix}${__DEFINES}")
+        endif()
+    endif()
+
+    get_target_property(DIRINC ${_targetName} INCLUDE_DIRECTORIES)
+    set_target_properties(${_targetName}_pch_dephelp PROPERTIES INCLUDE_DIRECTORIES "${DIRINC}")
+
     #MESSAGE("_compile_FLAGS: ${_compile_FLAGS}")
     #message("COMMAND ${CMAKE_CXX_COMPILER}	${_compile_FLAGS} -x c++-header -o ${_output} ${_input}")
 
     ADD_CUSTOM_COMMAND(
       OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}"
-      COMMAND ${CMAKE_COMMAND} -E copy  "${_input}" "${CMAKE_CURRENT_BINARY_DIR}/${_name}" # ensure same directory! Required by gcc
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_input}" "${CMAKE_CURRENT_BINARY_DIR}/${_name}" # ensure same directory! Required by gcc
       DEPENDS "${_input}"
       )
 
@@ -272,12 +307,9 @@ ENDMACRO(ADD_PRECOMPILED_HEADER)
 MACRO(GET_NATIVE_PRECOMPILED_HEADER _targetName _input)
 
     if(CMAKE_GENERATOR MATCHES "^Visual.*$")
-        SET(_dummy_str "#include \"${_input}\"\n"
-"// This is required to suppress LNK4221.  Very annoying.\n"
-"void *g_${_targetName}Dummy = 0\;\n")
+        set(_dummy_str "#include \"${_input}\"\n")
 
-        # Use of cxx extension for generated files (as Qt does)
-        SET(${_targetName}_pch ${CMAKE_CURRENT_BINARY_DIR}/${_targetName}_pch.cxx)
+        set(${_targetName}_pch ${CMAKE_CURRENT_BINARY_DIR}/${_targetName}_pch.cpp)
         if(EXISTS ${${_targetName}_pch})
             # Check if contents is the same, if not rewrite
             # todo
@@ -337,11 +369,7 @@ ENDMACRO(ADD_NATIVE_PRECOMPILED_HEADER)
 
 macro(ocv_add_precompiled_header_to_target the_target pch_header)
   if(PCHSupport_FOUND AND ENABLE_PRECOMPILED_HEADERS AND EXISTS "${pch_header}")
-    if(CMAKE_GENERATOR MATCHES Visual)
-      string(REGEX REPLACE "hpp$" "cpp" ${the_target}_pch "${pch_header}")
-      add_native_precompiled_header(${the_target} ${pch_header})
-      unset(${the_target}_pch)
-    elseif(CMAKE_GENERATOR MATCHES Xcode)
+    if(CMAKE_GENERATOR MATCHES "^Visual" OR CMAKE_GENERATOR MATCHES Xcode)
       add_native_precompiled_header(${the_target} ${pch_header})
     elseif(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_GENERATOR MATCHES "Makefiles|Ninja")
       add_precompiled_header(${the_target} ${pch_header})

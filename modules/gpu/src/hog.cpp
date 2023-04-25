@@ -22,13 +22,13 @@
 //
 //   * Redistribution's in binary form must reproduce the above copyright notice,
 //     this list of conditions and the following disclaimer in the documentation
-//     and/or other GpuMaterials provided with the distribution.
+//     and/or other materials provided with the distribution.
 //
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
 // This software is provided by the copyright holders and contributors "as is" and
-// any express or bpied warranties, including, but not limited to, the bpied
+// any express or implied warranties, including, but not limited to, the implied
 // warranties of merchantability and fitness for a particular purpose are disclaimed.
 // In no event shall the Intel Corporation or contributors be liable for any direct,
 // indirect, incidental, special, exemplary, or consequential damages
@@ -127,9 +127,6 @@ cv::gpu::HOGDescriptor::HOGDescriptor(Size win_size_, Size block_size_, Size blo
 
     Size cells_per_block = Size(block_size.width / cell_size.width, block_size.height / cell_size.height);
     CV_Assert(cells_per_block == Size(2, 2));
-
-    cv::Size blocks_per_win = numPartsWithin(win_size, block_size, block_stride);
-    hog::set_up_constants(nbins, block_stride.width, block_stride.height, blocks_per_win.width, blocks_per_win.height);
 }
 
 size_t cv::gpu::HOGDescriptor::getDescriptorSize() const
@@ -221,6 +218,9 @@ void cv::gpu::HOGDescriptor::computeGradient(const GpuMat& img, GpuMat& _grad, G
 
 void cv::gpu::HOGDescriptor::computeBlockHistograms(const GpuMat& img)
 {
+    cv::Size blocks_per_win = numPartsWithin(win_size, block_size, block_stride);
+    hog::set_up_constants(nbins, block_stride.width, block_stride.height, blocks_per_win.width, blocks_per_win.height);
+
     computeGradient(img, grad, qangle);
 
     size_t block_hist_size = getBlockHistogramSize();

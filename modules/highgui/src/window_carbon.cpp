@@ -146,6 +146,7 @@ CV_IMPL int cvInitSystem( int argc, char** argv )
         }
         wasInitialized = 1;
     }
+    setlocale(LC_NUMERIC,"C");
 
     return 0;
 }
@@ -569,7 +570,7 @@ static int icvCreateTrackbar (const char* trackbar_name,
 
         //pad size maxvalue in pixel
         Point	qdSize;
-        char valueinchar[strlen(trackbar_name)+1 +1 +1+nbDigit+1];//lenght+\n +space +(+nbDigit+)
+        char valueinchar[strlen(trackbar_name)+1 +1 +1+nbDigit+1];//length+\n +space +(+nbDigit+)
         sprintf(valueinchar, "%s (%d)",trackbar_name, trackbar->maxval);
         SInt16	baseline;
         CFStringRef text = CFStringCreateWithCString(NULL,valueinchar,kCFStringEncodingASCII);

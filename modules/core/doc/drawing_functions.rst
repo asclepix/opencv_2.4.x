@@ -26,6 +26,10 @@ If a drawn figure is partially or completely outside the image, the drawing func
 
 .. note:: The functions do not support alpha-transparency when the target image is 4-channel. In this case, the ``color[3]`` is simply copied to the repainted pixels. Thus, if you want to paint semi-transparent shapes, you can paint them in a separate buffer and then blend it with the main image.
 
+.. note::
+
+   * An example on using variate drawing functions like line, rectangle, ... can be found at opencv_source_code/samples/cpp/drawing.cpp
+
 circle
 ----------
 Draws a circle.
@@ -102,7 +106,7 @@ Draws a simple or thick elliptic arc or fills an ellipse sector.
 
     :param center: Center of the ellipse.
 
-    :param axes: Length of the ellipse axes.
+    :param axes: Half of the size of the ellipse main axes.
 
     :param angle: Ellipse rotation angle in degrees.
 
@@ -140,7 +144,7 @@ Approximates an elliptic arc with a polyline.
 
     :param center: Center of the arc.
 
-    :param axes: Half-sizes of the arc. See the  :ocv:func:`ellipse`  for details.
+    :param axes: Half of the size of the ellipse main axes. See the  :ocv:func:`ellipse`  for details.
 
     :param angle: Rotation angle of the ellipse in degrees. See the  :ocv:func:`ellipse`  for details.
 
@@ -154,7 +158,6 @@ Approximates an elliptic arc with a polyline.
 
 The function ``ellipse2Poly`` computes the vertices of a polyline that approximates the specified elliptic arc. It is used by
 :ocv:func:`ellipse` .
-
 
 
 fillConvexPoly
@@ -234,6 +237,8 @@ Calculates the width and height of a text string.
 
     :param text: Input text string.
 
+    :param text_string: Input text string in C format.
+
     :param fontFace: Font to use. See the  :ocv:func:`putText` for details.
 
     :param fontScale: Font scale. See the  :ocv:func:`putText`  for details.
@@ -241,6 +246,12 @@ Calculates the width and height of a text string.
     :param thickness: Thickness of lines used to render the text. See  :ocv:func:`putText`  for details.
 
     :param baseLine: Output parameter - y-coordinate of the baseline relative to the bottom-most text point.
+
+    :param baseline: Output parameter - y-coordinate of the baseline relative to the bottom-most text point.
+
+    :param font: Font description in terms of old C API.
+
+    :param text_size: Output parameter - The size of a box that contains the specified text.
 
 The function ``getTextSize`` calculates and returns the size of a box that contains the specified text.
 That is, the following code renders some text, the tight box surrounding it, and the baseline: ::
@@ -360,6 +371,36 @@ Draws a line segment connecting two points.
 The function ``line`` draws the line segment between ``pt1`` and ``pt2`` points in the image. The line is clipped by the image boundaries. For non-antialiased lines with integer coordinates, the 8-connected or 4-connected Bresenham algorithm is used. Thick lines are drawn with rounding endings.
 Antialiased lines are drawn using Gaussian filtering. To specify the line color, you may use the macro ``CV_RGB(r, g, b)`` .
 
+arrowedLine
+----------------
+Draws a arrow segment pointing from the first point to the second one.
+
+.. ocv:function:: void arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
+
+    :param img: Image.
+
+    :param pt1: The point the arrow starts from.
+
+    :param pt2: The point the arrow points to.
+
+    :param color: Line color.
+
+    :param thickness: Line thickness.
+
+    :param line_type: Type of the line:
+
+            * **8** (or omitted) - 8-connected line.
+
+            * **4** - 4-connected line.
+
+            * **CV_AA** - antialiased line.
+
+    :param shift: Number of fractional bits in the point coordinates.
+
+    :param tipLength: The length of the arrow tip in relation to the arrow length
+
+The function ``arrowedLine`` draws an arrow between ``pt1`` and ``pt2`` points in the image. See also :ocv:func:`line`.
+
 
 LineIterator
 ------------
@@ -404,8 +445,8 @@ The number of pixels along the line is stored in ``LineIterator::count`` . The m
 
     for(int i = 0; i < it.count; i++, ++it)
         buf[i] = *(const Vec3b)*it;
-    
-    // alternative way of iterating through the line    
+
+    // alternative way of iterating through the line
     for(int i = 0; i < it2.count; i++, ++it2)
     {
         Vec3b val = img.at<Vec3b>(it2.pos());
@@ -503,7 +544,7 @@ Draws a text string.
     :param font: ``CvFont`` structure initialized using :ocv:cfunc:`InitFont`.
 
     :param fontFace: Font type. One of  ``FONT_HERSHEY_SIMPLEX``,  ``FONT_HERSHEY_PLAIN``, ``FONT_HERSHEY_DUPLEX``,  ``FONT_HERSHEY_COMPLEX``,  ``FONT_HERSHEY_TRIPLEX``, ``FONT_HERSHEY_COMPLEX_SMALL``,  ``FONT_HERSHEY_SCRIPT_SIMPLEX``, or  ``FONT_HERSHEY_SCRIPT_COMPLEX``,
-           where each of the font ID's can be combined with  ``FONT_HERSHEY_ITALIC``  to get the slanted letters.
+           where each of the font ID's can be combined with  ``FONT_ITALIC``  to get the slanted letters.
 
     :param fontScale: Font scale factor that is multiplied by the font-specific base size.
 
@@ -519,4 +560,3 @@ The function ``putText`` renders the specified text string in the image.
 Symbols that cannot be rendered using the specified font are
 replaced by question marks. See
 :ocv:func:`getTextSize` for a text rendering code example.
-

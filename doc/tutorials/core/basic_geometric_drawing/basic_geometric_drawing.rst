@@ -44,19 +44,19 @@ or
 Scalar
 -------
 * Represents a 4-element vector. The type Scalar is widely used in OpenCV for passing pixel values.
-* In this tutorial, we will use it extensively to represent RGB color values (3 parameters). It is not necessary to define the last argument if it is not going to be used.
+* In this tutorial, we will use it extensively to represent BGR color values (3 parameters). It is not necessary to define the last argument if it is not going to be used.
 * Let's see an example, if we are asked for a color argument and we give:
 
   .. code-block:: cpp
 
      Scalar( a, b, c )
 
-  We would be defining a RGB color such as: *Red = c*, *Green = b* and *Blue = a*
+  We would be defining a BGR color such as: *Blue = a*, *Green = b* and *Red = c*
 
 
 Code
 =====
-* This code is in your OpenCV sample folder. Otherwise you can grab it from `here <http://code.opencv.org/projects/opencv/repository/revisions/master/raw/samples/cpp/tutorial_code/core/Matrix/Drawing_1.cpp>`_
+* This code is in your OpenCV sample folder. Otherwise you can grab it from `here <https://github.com/Itseez/opencv/tree/master/samples/cpp/tutorial_code/core/Matrix/Drawing_1.cpp>`_
 
 Explanation
 =============
@@ -99,11 +99,11 @@ Explanation
 
       /// 2.b. Creating rectangles
       rectangle( rook_image,
-  	         Point( 0, 7*w/8.0 ),
-	         Point( w, w),
-	         Scalar( 0, 255, 255 ),
-	         -1,
-	         8 );
+                 Point( 0, 7*w/8.0 ),
+                 Point( w, w),
+                 Scalar( 0, 255, 255 ),
+                 -1,
+                 8 );
 
       /// 2.c. Create a few lines
       MyLine( rook_image, Point( 0, 15*w/16 ), Point( w, 15*w/16 ) );
@@ -118,16 +118,16 @@ Explanation
      .. code-block:: cpp
 
         void MyLine( Mat img, Point start, Point end )
-	{
-  	  int thickness = 2;
-  	  int lineType = 8;
-  	  line( img,
-	  	start,
-		end,
-		Scalar( 0, 0, 0 ),
-		thickness,
-		lineType );
-	}
+        {
+          int thickness = 2;
+          int lineType = 8;
+          line( img,
+                start,
+                end,
+                Scalar( 0, 0, 0 ),
+                thickness,
+                lineType );
+        }
 
      As we can see, *MyLine* just call the function :line:`line <>`, which does the following:
 
@@ -135,7 +135,7 @@ Explanation
 
         * Draw a line from Point **start** to Point **end**
         * The line is displayed in the image **img**
-        * The line color is defined by **Scalar( 0, 0, 0)** which is the RGB value correspondent to **Black**
+        * The line color is defined by **Scalar( 0, 0, 0)** which is the BGR value correspondent to **Black**
         * The line thickness is set to **thickness** (in this case 2)
         * The line is a 8-connected one (**lineType** = 8)
 
@@ -145,18 +145,18 @@ Explanation
 
         void MyEllipse( Mat img, double angle )
         {
-   	  int thickness = 2;
-  	  int lineType = 8;
+          int thickness = 2;
+          int lineType = 8;
 
-	  ellipse( img,
-	   	   Point( w/2.0, w/2.0 ),
-	   	   Size( w/4.0, w/16.0 ),
-	   	   angle,
-	   	   0,
-	   	   360,
-	   	   Scalar( 255, 0, 0 ),
-	   	   thickness,
-	   	   lineType );
+          ellipse( img,
+                   Point( w/2.0, w/2.0 ),
+                   Size( w/4.0, w/16.0 ),
+                   angle,
+                   0,
+                   360,
+                   Scalar( 255, 0, 0 ),
+                   thickness,
+                   lineType );
         }
 
      From the code above, we can observe that the function :ellipse:`ellipse <>` draws an ellipse such that:
@@ -167,7 +167,7 @@ Explanation
         * The ellipse center is located in the point **(w/2.0, w/2.0)** and is enclosed in a box of size **(w/4.0, w/16.0)**
         * The ellipse is rotated **angle** degrees
         * The ellipse extends an arc between **0** and **360** degrees
-        * The color of the figure will be **Scalar( 255, 255, 0)** which means blue in RGB value.
+        * The color of the figure will be **Scalar( 255, 0, 0)** which means blue in BGR value.
         * The ellipse's **thickness** is 2.
 
 
@@ -176,17 +176,17 @@ Explanation
      .. code-block:: cpp
 
         void MyFilledCircle( Mat img, Point center )
-	{
-  	 int thickness = -1;
-  	 int lineType = 8;
+        {
+         int thickness = -1;
+         int lineType = 8;
 
-	 circle( img,
-	  	 center,
-	  	 w/32.0,
-	  	 Scalar( 0, 0, 255 ),
-	  	 thickness,
-	  	 lineType );
-	}
+         circle( img,
+                 center,
+                 w/32.0,
+                 Scalar( 0, 0, 255 ),
+                 thickness,
+                 lineType );
+        }
 
      Similar to the ellipse function, we can observe that *circle* receives as arguments:
 
@@ -203,41 +203,41 @@ Explanation
      .. code-block:: cpp
 
         void MyPolygon( Mat img )
-	{
-  	  int lineType = 8;
+        {
+          int lineType = 8;
 
-	  /** Create some points */
-  	  Point rook_points[1][20];
-  	  rook_points[0][0] = Point( w/4.0, 7*w/8.0 );
-  	  rook_points[0][1] = Point( 3*w/4.0, 7*w/8.0 );
-  	  rook_points[0][2] = Point( 3*w/4.0, 13*w/16.0 );
-  	  rook_points[0][3] = Point( 11*w/16.0, 13*w/16.0 );
- 	  rook_points[0][4] = Point( 19*w/32.0, 3*w/8.0 );
-  	  rook_points[0][5] = Point( 3*w/4.0, 3*w/8.0 );
-  	  rook_points[0][6] = Point( 3*w/4.0, w/8.0 );
-  	  rook_points[0][7] = Point( 26*w/40.0, w/8.0 );
-  	  rook_points[0][8] = Point( 26*w/40.0, w/4.0 );
-  	  rook_points[0][9] = Point( 22*w/40.0, w/4.0 );
-  	  rook_points[0][10] = Point( 22*w/40.0, w/8.0 );
-  	  rook_points[0][11] = Point( 18*w/40.0, w/8.0 );
-  	  rook_points[0][12] = Point( 18*w/40.0, w/4.0 );
-  	  rook_points[0][13] = Point( 14*w/40.0, w/4.0 );
-  	  rook_points[0][14] = Point( 14*w/40.0, w/8.0 );
-  	  rook_points[0][15] = Point( w/4.0, w/8.0 );
-  	  rook_points[0][16] = Point( w/4.0, 3*w/8.0 );
-  	  rook_points[0][17] = Point( 13*w/32.0, 3*w/8.0 );
-  	  rook_points[0][18] = Point( 5*w/16.0, 13*w/16.0 );
-  	  rook_points[0][19] = Point( w/4.0, 13*w/16.0) ;
+          /** Create some points */
+          Point rook_points[1][20];
+          rook_points[0][0] = Point( w/4.0, 7*w/8.0 );
+          rook_points[0][1] = Point( 3*w/4.0, 7*w/8.0 );
+          rook_points[0][2] = Point( 3*w/4.0, 13*w/16.0 );
+          rook_points[0][3] = Point( 11*w/16.0, 13*w/16.0 );
+          rook_points[0][4] = Point( 19*w/32.0, 3*w/8.0 );
+          rook_points[0][5] = Point( 3*w/4.0, 3*w/8.0 );
+          rook_points[0][6] = Point( 3*w/4.0, w/8.0 );
+          rook_points[0][7] = Point( 26*w/40.0, w/8.0 );
+          rook_points[0][8] = Point( 26*w/40.0, w/4.0 );
+          rook_points[0][9] = Point( 22*w/40.0, w/4.0 );
+          rook_points[0][10] = Point( 22*w/40.0, w/8.0 );
+          rook_points[0][11] = Point( 18*w/40.0, w/8.0 );
+          rook_points[0][12] = Point( 18*w/40.0, w/4.0 );
+          rook_points[0][13] = Point( 14*w/40.0, w/4.0 );
+          rook_points[0][14] = Point( 14*w/40.0, w/8.0 );
+          rook_points[0][15] = Point( w/4.0, w/8.0 );
+          rook_points[0][16] = Point( w/4.0, 3*w/8.0 );
+          rook_points[0][17] = Point( 13*w/32.0, 3*w/8.0 );
+          rook_points[0][18] = Point( 5*w/16.0, 13*w/16.0 );
+          rook_points[0][19] = Point( w/4.0, 13*w/16.0) ;
 
-	  const Point* ppt[1] = { rook_points[0] };
-  	  int npt[] = { 20 };
+          const Point* ppt[1] = { rook_points[0] };
+          int npt[] = { 20 };
 
-  	  fillPoly( img,
-	    	    ppt,
-	    	    npt,
-            	    1,
-	    	    Scalar( 255, 255, 255 ),
-	    	    lineType );
+          fillPoly( img,
+                    ppt,
+                    npt,
+                    1,
+                    Scalar( 255, 255, 255 ),
+                    lineType );
          }
 
      To draw a filled polygon we use the function :fill_poly:`fillPoly <>`. We note that:
@@ -255,11 +255,11 @@ Explanation
      .. code-block:: cpp
 
         rectangle( rook_image,
-	     	   Point( 0, 7*w/8.0 ),
-	     	   Point( w, w),
-	     	   Scalar( 0, 255, 255 ),
-	     	   -1,
-	     	   8 );
+                   Point( 0, 7*w/8.0 ),
+                   Point( w, w),
+                   Scalar( 0, 255, 255 ),
+                   -1,
+                   8 );
 
      Finally we have the :rectangle:`rectangle <>` function (we did not create a special function for this guy). We note that:
 

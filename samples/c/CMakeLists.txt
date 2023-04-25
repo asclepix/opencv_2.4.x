@@ -4,7 +4,7 @@
 # ----------------------------------------------------------------------------
 
 SET(OPENCV_C_SAMPLES_REQUIRED_DEPS opencv_core opencv_flann opencv_imgproc
-    opencv_highgui opencv_ml opencv_video opencv_objdetect opencv_photo opencv_nonfree
+    opencv_highgui opencv_ml opencv_video opencv_objdetect opencv_photo
     opencv_features2d opencv_calib3d opencv_legacy opencv_contrib)
 
 ocv_check_dependencies(${OPENCV_C_SAMPLES_REQUIRED_DEPS})
@@ -16,7 +16,7 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
   endif()
 
-  ocv_include_modules(${OPENCV_C_SAMPLES_REQUIRED_DEPS})
+  ocv_include_modules(${OPENCV_C_SAMPLES_REQUIRED_DEPS} opencv_nonfree)
 
   # ---------------------------------------------
   #      Define executable targets
@@ -39,7 +39,7 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
         set_target_properties(${the_target} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:atlthunk.lib /NODEFAULTLIB:atlsd.lib /DEBUG")
       endif()
       install(TARGETS ${the_target}
-              RUNTIME DESTINATION "samples/c" COMPONENT main)
+              RUNTIME DESTINATION "${OPENCV_SAMPLES_BIN_INSTALL_PATH}/c" COMPONENT samples)
     endif()
   ENDMACRO()
 
@@ -51,10 +51,10 @@ if(BUILD_EXAMPLES AND OCV_DEPENDENCIES_FOUND)
   endforeach()
 endif()
 
-if (INSTALL_C_EXAMPLES AND NOT WIN32)
-  file(GLOB C_SAMPLES *.c *.cpp *.jpg *.png *.data makefile.* build_all.sh *.dsp *.cmd )
+if (OCV_DEPENDENCIES_FOUND AND INSTALL_C_EXAMPLES AND NOT WIN32)
+  file(GLOB C_SAMPLES *.c *.cpp *.jpg *.png *.data makefile.* *.cmd *.txt)
   install(FILES ${C_SAMPLES}
-          DESTINATION share/OpenCV/samples/c
-          PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+          DESTINATION "${OPENCV_SAMPLES_SRC_INSTALL_PATH}/c"
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ COMPONENT samples)
+  install(PROGRAMS build_all.sh DESTINATION "${OPENCV_SAMPLES_SRC_INSTALL_PATH}/c" COMPONENT samples)
 endif ()
-

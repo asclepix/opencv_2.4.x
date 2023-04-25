@@ -33,6 +33,10 @@ The function ``createTrackbar`` creates a trackbar (a slider or range control) w
 
 Clicking the label of each trackbar enables editing the trackbar values manually.
 
+.. note::
+
+   * An example of using the trackbar functionality can be found at opencv_source_code/samples/cpp/connected_components.cpp
+
 getTrackbarPos
 ------------------
 Returns the trackbar position.
@@ -71,7 +75,7 @@ Displays an image in the specified window.
 
     :param image: Image to be shown.
 
-The function ``imshow`` displays an image in the specified window. If the window was created with the ``CV_WINDOW_AUTOSIZE`` flag, the image is shown with its original size. Otherwise, the image is scaled to fit the window. The function may scale the image, depending on its depth:
+The function ``imshow`` displays an image in the specified window. If the window was created with the ``CV_WINDOW_AUTOSIZE`` flag, the image is shown with its original size, however it is still limited by the screen resolution. Otherwise, the image is scaled to fit the window. The function may scale the image, depending on its depth:
 
     * If the image is 8-bit unsigned, it is displayed as is.
 
@@ -79,6 +83,17 @@ The function ``imshow`` displays an image in the specified window. If the window
 
     * If the image is 32-bit floating-point, the pixel values are multiplied by 255. That is, the value range [0,1] is mapped to [0,255].
 
+If the window was not created before this function, it is assumed creating a window with ``CV_WINDOW_AUTOSIZE``.
+
+If you need to show an image that is bigger than the screen resolution, you will need to call ``namedWindow("", WINDOW_NORMAL)`` before the ``imshow``.
+
+If window was created with OpenGL support, ``imshow`` also support :ocv:class:`ogl::Buffer` ,  :ocv:class:`ogl::Texture2D` and  :ocv:class:`gpu::GpuMat` as input.
+
+.. note::
+
+   This function should be followed by ``waitKey`` function which displays the image for specified milliseconds. Otherwise, it won't display the image. For example, ``waitKey(0)`` will display the window  infinitely until any keypress (it is suitable for image display). ``waitKey(25)`` will display a frame for 25 ms, after which display will be automatically closed. (If you put it in a loop to read videos, it will display the video frame-by-frame)
+
+[Windows Backend Only] Pressing Ctrl+C will copy the image to the clipboard.
 
 namedWindow
 ---------------
@@ -94,7 +109,13 @@ Creates a window.
 
     :param name: Name of the window in the window caption that may be used as a window identifier.
 
-    :param flags: Flags of the window. Currently the only supported flag is  ``CV_WINDOW_AUTOSIZE`` . If this is set, the window size is automatically adjusted to fit the displayed image (see  :ocv:func:`imshow` ), and you cannot change the window size manually.
+    :param flags: Flags of the window. The supported flags are:
+
+        * **WINDOW_NORMAL** If this is set, the user can resize the window (no constraint).
+
+        * **WINDOW_AUTOSIZE** If this is set, the window size is automatically adjusted to fit the displayed image (see  :ocv:func:`imshow` ), and you cannot change the window size manually.
+
+        * **WINDOW_OPENGL** If this is set, the window will be created with OpenGL support.
 
 The function ``namedWindow`` creates a window that can be used as a placeholder for images and trackbars. Created windows are referred to by their names.
 
@@ -203,7 +224,7 @@ Sets mouse handler for the specified window
 
     :param winname: Window name
 
-    :param onMouse: Mouse callback. See OpenCV samples, such as  http://code.opencv.org/projects/opencv/repository/revisions/master/entry/samples/cpp/ffilldemo.cpp, on how to specify and use the callback.
+    :param onMouse: Mouse callback. See OpenCV samples, such as  https://github.com/Itseez/opencv/tree/master/samples/cpp/ffilldemo.cpp, on how to specify and use the callback.
 
     :param userdata: The optional parameter passed to the callback.
 
@@ -256,3 +277,31 @@ The function ``waitKey`` waits for a key event infinitely (when
 .. note::
 
     The function only works if there is at least one HighGUI window created and the window is active. If there are several HighGUI windows, any of them can be active.
+
+setOpenGlDrawCallback
+---------------------
+Set OpenGL render handler for the specified window.
+
+.. ocv:function:: void setOpenGlDrawCallback(const string& winname, OpenGlDrawCallback onOpenGlDraw, void* userdata = 0)
+
+    :param winname: Window name
+
+    :param onOpenGlDraw: Draw callback.
+
+    :param userdata: The optional parameter passed to the callback.
+
+setOpenGlContext
+----------------
+Sets the specified window as current OpenGL context.
+
+.. ocv:function:: void setOpenGlContext(const string& winname)
+
+    :param winname: Window name
+
+updateWindow
+------------
+Force window to redraw its context and call draw callback ( :ocv:func:`setOpenGlDrawCallback` ).
+
+.. ocv:function:: void updateWindow(const string& winname)
+
+    :param winname: Window name

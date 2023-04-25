@@ -2,6 +2,7 @@
  *  cap_ios_video_camera.mm
  *  For iOS video I/O
  *  by Eduard Feicho on 29/07/12
+ *  by Alexander Shishkov on 17/07/13
  *  Copyright 2012. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +31,6 @@
 
 #import "opencv2/highgui/cap_ios.h"
 #include "precomp.hpp"
-
 #import <AssetsLibrary/AssetsLibrary.h>
 
 
@@ -41,7 +41,9 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 
 
 
-@interface CvVideoCamera ()
+@interface CvVideoCamera () {
+    int recordingCountDown;
+}
 
 - (void)createVideoDataOutput;
 - (void)createVideoFileOutput;
@@ -70,6 +72,7 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 @synthesize videoDataOutput;
 
 @synthesize recordVideo;
+@synthesize rotateVideo;
 //@synthesize videoFileOutput;
 @synthesize recordAssetWriterInput;
 @synthesize recordPixelBufferAdaptor;
@@ -85,6 +88,7 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
     if (self) {
         self.useAVCaptureVideoPreviewLayer = NO;
         self.recordVideo = NO;
+        self.rotateVideo = NO;
     }
     return self;
 }
@@ -96,10 +100,11 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 
 - (void)start;
 {
+    recordingCountDown = 10;
     [super start];
 
     if (self.recordVideo == YES) {
-        NSError* error;
+        NSError* error = nil;
         if ([[NSFileManager defaultManager] fileExistsAtPath:[self videoFileString]]) {
             [[NSFileManager defaultManager] removeItemAtPath:[self videoFileString] error:&error];
         }
@@ -269,12 +274,7 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 
 }
 
-
-
-
 #pragma mark - Private Interface
-
-
 
 - (void)createVideoDataOutput;
 {
@@ -389,12 +389,46 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
     [self.parentView.layer addSublayer:self.customPreviewLayer];
 }
 
+- (CVPixelBufferRef) pixelBufferFromCGImage: (CGImageRef) image
+{
+
+    CGSize frameSize = CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image));
+    NSDictionary *options = [NSDictionary dictionaryWithObjectsAndKeys:
+                             [NSNumber numberWithBool:NO], kCVPixelBufferCGImageCompatibilityKey,
+                             [NSNumber numberWithBool:NO], kCVPixelBufferCGBitmapContextCompatibilityKey,
+                             nil];
+    CVPixelBufferRef pxbuffer = NULL;
+    CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault, frameSize.width,
+                                          frameSize.height,  kCVPixelFormatType_32ARGB, (CFDictionaryRef) CFBridgingRetain(options),
+                                          &pxbuffer);
+    NSParameterAssert(status == kCVReturnSuccess && pxbuffer != NULL);
+
+    CVPixelBufferLockBaseAddress(pxbuffer, 0);
+    void *pxdata = CVPixelBufferGetBaseAddress(pxbuffer);
+
+
+    CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(pxdata, frameSize.width,
+                                                 frameSize.height, 8, 4*frameSize.width, rgbColorSpace,
+                                                 kCGImageAlphaPremultipliedFirst);
+
+    CGContextDrawImage(context, CGRectMake(0, 0, CGImageGetWidth(image),
+                                           CGImageGetHeight(image)), image);
+    CGColorSpaceRelease(rgbColorSpace);
+    CGContextRelease(context);
+
+    CVPixelBufferUnlockBaseAddress(pxbuffer, 0);
+
+    return pxbuffer;
+}
 
 #pragma mark - Protocol AVCaptureVideoDataOutputSampleBufferDelegate
 
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection
 {
+    (void)captureOutput;
+    (void)connection;
     if (self.delegate) {
 
         // convert from Core Media to Core Video
@@ -433,9 +467,8 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
         }
 
         // delegate image processing to the delegate
-        cv::Mat image(height, width, format_opencv, bufferAddress, bytesPerRow);
+        cv::Mat image((int)height, (int)width, format_opencv, bufferAddress, bytesPerRow);
 
-        cv::Mat* result = NULL;
         CGImage* dstImage;
 
         if ([self.delegate respondsToSelector:@selector(processImage:)]) {
@@ -444,7 +477,7 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 
         // check if matrix data pointer or dimensions were changed by the delegate
         bool iOSimage = false;
-        if (height == image.rows && width == image.cols && format_opencv == image.type() && bufferAddress == image.data && bytesPerRow == image.step) {
+        if (height == (size_t)image.rows && width == (size_t)image.cols && format_opencv == image.type() && bufferAddress == image.data && bytesPerRow == image.step) {
             iOSimage = true;
         }
 
@@ -507,7 +540,8 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
         });
 
 
-        if (self.recordVideo == YES) {
+        recordingCountDown--;
+        if (self.recordVideo == YES && recordingCountDown < 0) {
             lastSampleTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
 //			CMTimeShow(lastSampleTime);
             if (self.recordAssetWriter.status != AVAssetWriterStatusWriting) {
@@ -522,10 +556,13 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
             }
 
             if (self.recordAssetWriterInput.readyForMoreMediaData) {
-                if (! [self.recordPixelBufferAdaptor appendPixelBuffer:imageBuffer
+                CVImageBufferRef pixelBuffer = [self pixelBufferFromCGImage:dstImage];
+                if (! [self.recordPixelBufferAdaptor appendPixelBuffer:pixelBuffer
                                                   withPresentationTime:lastSampleTime] ) {
                     NSLog(@"Video Writing Error");
                 }
+                if (pixelBuffer != nullptr)
+                    CVPixelBufferRelease(pixelBuffer);
             }
 
         }
@@ -543,9 +580,12 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
 
 - (void)updateOrientation;
 {
-    NSLog(@"rotate..");
-    self.customPreviewLayer.bounds = CGRectMake(0, 0, self.parentView.frame.size.width, self.parentView.frame.size.height);
-    [self layoutPreviewLayer];
+    if (self.rotateVideo == YES)
+    {
+        NSLog(@"rotate..");
+        self.customPreviewLayer.bounds = CGRectMake(0, 0, self.parentView.frame.size.width, self.parentView.frame.size.height);
+        [self layoutPreviewLayer];
+    }
 }
 
 
@@ -558,7 +598,7 @@ static CGFloat DegreesToRadians(CGFloat degrees) {return degrees * M_PI / 180;};
     ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
     if ([library videoAtPathIsCompatibleWithSavedPhotosAlbum:[self videoFileURL]]) {
         [library writeVideoAtPathToSavedPhotosAlbum:[self videoFileURL]
-                                    completionBlock:^(NSURL *assetURL, NSError *error){}];
+                                    completionBlock:^(NSURL *assetURL, NSError *error){ (void)assetURL; (void)error; }];
     }
 }
 

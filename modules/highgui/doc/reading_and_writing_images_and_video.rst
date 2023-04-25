@@ -20,7 +20,7 @@ Reads an image from a buffer in memory.
     :param buf: Input array or vector of bytes.
 
     :param flags: The same flags as in :ocv:func:`imread` .
-    
+
     :param dst: The optional output placeholder for the decoded matrix. It can save the image reallocations when the function is called repeatedly for images of the same size.
 
 The function reads an image from the specified buffer in the memory.
@@ -74,9 +74,9 @@ Loads an image from a file.
     :param filename: Name of file to be loaded.
 
     :param flags: Flags specifying the color type of a loaded image:
-    
+
         * CV_LOAD_IMAGE_ANYDEPTH - If set, return 16-bit/32-bit image when the input has the corresponding depth, otherwise convert it to 8-bit.
-        
+
         * CV_LOAD_IMAGE_COLOR - If set, always convert image to the color one
 
         * CV_LOAD_IMAGE_GRAYSCALE - If set, always convert image to the grayscale one
@@ -115,7 +115,7 @@ The function ``imread`` loads an image from the specified file and returns it. I
 .. note:: In the case of color images, the decoded images will have the channels stored in ``B G R`` order.
 
 imwrite
------------
+-------
 Saves an image to a specified file.
 
 .. ocv:function:: bool imwrite( const string& filename, InputArray img, const vector<int>& params=vector<int>() )
@@ -141,7 +141,7 @@ Saves an image to a specified file.
 The function ``imwrite`` saves the image to the specified file. The image format is chosen based on the ``filename`` extension (see
 :ocv:func:`imread` for the list of extensions). Only 8-bit (or 16-bit unsigned (``CV_16U``) in case of PNG, JPEG 2000, and TIFF) single-channel or 3-channel (with 'BGR' channel order) images can be saved using this function. If the format, depth or channel order is different, use
 :ocv:func:`Mat::convertTo` , and
-:ocv:func:`cvtColor` to convert it before saving. Or, use the universal XML I/O functions to save the image to XML or YAML format.
+:ocv:func:`cvtColor` to convert it before saving. Or, use the universal :ocv:class:`FileStorage` I/O functions to save the image to XML or YAML format.
 
 It is possible to store PNG images with an alpha channel using this function. To do this, create 8-bit (or 16-bit) 4-channel image BGRA, where the alpha channel goes last. Fully transparent pixels should have alpha set to 0, fully opaque pixels should have alpha set to 255/65535. The sample below shows how to create such a BGRA image and store to PNG file. It also demonstrates how to set custom compression parameters ::
 
@@ -154,13 +154,14 @@ It is possible to store PNG images with an alpha channel using this function. To
 
     void createAlphaMat(Mat &mat)
     {
+        CV_Assert(mat.channels() == 4);
         for (int i = 0; i < mat.rows; ++i) {
             for (int j = 0; j < mat.cols; ++j) {
-                Vec4b& rgba = mat.at<Vec4b>(i, j);
-                rgba[0] = UCHAR_MAX;
-                rgba[1] = saturate_cast<uchar>((float (mat.cols - j)) / ((float)mat.cols) * UCHAR_MAX);
-                rgba[2] = saturate_cast<uchar>((float (mat.rows - i)) / ((float)mat.rows) * UCHAR_MAX);
-                rgba[3] = saturate_cast<uchar>(0.5 * (rgba[1] + rgba[2]));
+                Vec4b& bgra = mat.at<Vec4b>(i, j);
+                bgra[0] = UCHAR_MAX; // Blue
+                bgra[1] = saturate_cast<uchar>((float (mat.cols - j)) / ((float)mat.cols) * UCHAR_MAX); // Green
+                bgra[2] = saturate_cast<uchar>((float (mat.rows - i)) / ((float)mat.rows) * UCHAR_MAX); // Red
+                bgra[3] = saturate_cast<uchar>(0.5 * (bgra[1] + bgra[2])); // Alpha
             }
         }
     }
@@ -192,8 +193,8 @@ VideoCapture
 ------------
 .. ocv:class:: VideoCapture
 
-Class for video capturing from video files or cameras.
-The class provides C++ API for capturing video from cameras or for reading video files. Here is how the class can be used: ::
+Class for video capturing from video files, image sequences or cameras.
+The class provides C++ API for capturing video from cameras or for reading video files and image sequences. Here is how the class can be used: ::
 
     #include "opencv2/opencv.hpp"
 
@@ -224,9 +225,18 @@ The class provides C++ API for capturing video from cameras or for reading video
 
 .. note:: In C API the black-box structure ``CvCapture`` is used instead of ``VideoCapture``.
 
+.. note::
+
+   * A basic sample on using the VideoCapture interface can be found at opencv_source_code/samples/cpp/starter_video.cpp
+   * Another basic video processing sample can be found at opencv_source_code/samples/cpp/video_dmtx.cpp
+
+   * (Python) A basic sample on using the VideoCapture interface can be found at opencv_source_code/samples/python2/video.py
+   * (Python) Another basic video processing sample can be found at opencv_source_code/samples/python2/video_dmtx.py
+   * (Python) A multi threaded video processing sample can be found at opencv_source_code/samples/python2/video_threaded.py
+
 
 VideoCapture::VideoCapture
-------------------------------
+--------------------------
 VideoCapture constructors.
 
 .. ocv:function:: VideoCapture::VideoCapture()
@@ -244,7 +254,7 @@ VideoCapture constructors.
 .. ocv:cfunction:: CvCapture* cvCaptureFromFile( const char* filename )
 .. ocv:pyoldfunction:: cv.CaptureFromFile(filename) -> CvCapture
 
-    :param filename: name of the opened video file
+    :param filename: name of the opened video file (eg. video.avi) or image sequence (eg. img_%02d.jpg, which will read samples like img_00.jpg, img_01.jpg, img_02.jpg, ...)
 
     :param device: id of the opened video capturing device (i.e. a camera index). If there is a single camera connected, just pass 0.
 
@@ -252,7 +262,7 @@ VideoCapture constructors.
 
 
 VideoCapture::open
----------------------
+------------------
 Open video file or a capturing device for video capturing
 
 .. ocv:function:: bool VideoCapture::open(const string& filename)
@@ -261,7 +271,7 @@ Open video file or a capturing device for video capturing
 .. ocv:pyfunction:: cv2.VideoCapture.open(filename) -> retval
 .. ocv:pyfunction:: cv2.VideoCapture.open(device) -> retval
 
-    :param filename: name of the opened video file
+    :param filename: name of the opened video file (eg. video.avi) or image sequence (eg. img_%02d.jpg, which will read samples like img_00.jpg, img_01.jpg, img_02.jpg, ...)
 
     :param device: id of the opened video capturing device (i.e. a camera index).
 
@@ -294,7 +304,7 @@ The C function also deallocates memory and clears ``*capture`` pointer.
 
 
 VideoCapture::grab
----------------------
+------------------
 Grabs the next frame from video file or capturing device.
 
 .. ocv:function:: bool VideoCapture::grab()
@@ -309,7 +319,7 @@ The methods/functions grab the next frame from video file or camera and return t
 
 The primary use of the function is in multi-camera environments, especially when the cameras do not have hardware synchronization. That is, you call ``VideoCapture::grab()`` for each camera and after that call the slower method ``VideoCapture::retrieve()`` to decode and get frame from each camera. This way the overhead on demosaicing or motion jpeg decompression etc. is eliminated and the retrieved frames from different cameras will be closer in time.
 
-Also, when a connected camera is multi-head (for example, a stereo camera or a Kinect device), the correct way of retrieving data from it is to call `VideoCapture::grab` first and then call :ocv:func:`VideoCapture::retrieve` one or more times with different values of the ``channel`` parameter. See http://code.opencv.org/projects/opencv/repository/revisions/master/entry/samples/cpp/kinect_maps.cpp
+Also, when a connected camera is multi-head (for example, a stereo camera or a Kinect device), the correct way of retrieving data from it is to call `VideoCapture::grab` first and then call :ocv:func:`VideoCapture::retrieve` one or more times with different values of the ``channel`` parameter. See https://github.com/Itseez/opencv/tree/master/samples/cpp/openni_capture.cpp
 
 
 VideoCapture::retrieve
@@ -322,7 +332,7 @@ Decodes and returns the grabbed video frame.
 
 .. ocv:cfunction:: IplImage* cvRetrieveFrame( CvCapture* capture, int streamIdx=0 )
 
-.. ocv:pyoldfunction:: cv.RetrieveFrame(capture) -> image
+.. ocv:pyoldfunction:: cv.RetrieveFrame(capture [, index]) -> image
 
 The methods/functions decode and return the just grabbed frame. If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file), the methods return false and the functions return NULL pointer.
 
@@ -330,7 +340,7 @@ The methods/functions decode and return the just grabbed frame. If no frames has
 
 
 VideoCapture::read
-----------------------
+------------------
 Grabs, decodes and returns the next video frame.
 
 .. ocv:function:: VideoCapture& VideoCapture::operator >> (Mat& image)
@@ -349,7 +359,7 @@ The methods/functions combine :ocv:func:`VideoCapture::grab` and :ocv:func:`Vide
 
 
 VideoCapture::get
----------------------
+-----------------
 Returns the specified ``VideoCapture`` property
 
 .. ocv:function:: double VideoCapture::get(int propId)
@@ -397,15 +407,21 @@ Returns the specified ``VideoCapture`` property
 
         * **CV_CAP_PROP_CONVERT_RGB** Boolean flags indicating whether images should be converted to RGB.
 
-        * **CV_CAP_PROP_WHITE_BALANCE** Currently not supported
+        * **CV_CAP_PROP_WHITE_BALANCE_U** The U value of the whitebalance setting (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_WHITE_BALANCE_V** The V value of the whitebalance setting (note: only supported by DC1394 v 2.x backend currently)
 
         * **CV_CAP_PROP_RECTIFICATION** Rectification flag for stereo cameras (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_ISO_SPEED** The ISO speed of the camera (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_BUFFERSIZE** Amount of frames stored in internal buffer memory (note: only supported by DC1394 v 2.x backend currently)
 
 
 **Note**: When querying a property that is not supported by the backend used by the ``VideoCapture`` class, value 0 is returned.
 
 VideoCapture::set
----------------------
+-----------------
 Sets a property in the ``VideoCapture``.
 
 .. ocv:function:: bool VideoCapture::set( int propId, double value )
@@ -452,9 +468,15 @@ Sets a property in the ``VideoCapture``.
 
         * **CV_CAP_PROP_CONVERT_RGB** Boolean flags indicating whether images should be converted to RGB.
 
-        * **CV_CAP_PROP_WHITE_BALANCE** Currently unsupported
+        * **CV_CAP_PROP_WHITE_BALANCE_U** The U value of the whitebalance setting (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_WHITE_BALANCE_V** The V value of the whitebalance setting (note: only supported by DC1394 v 2.x backend currently)
 
         * **CV_CAP_PROP_RECTIFICATION** Rectification flag for stereo cameras (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_ISO_SPEED** The ISO speed of the camera (note: only supported by DC1394 v 2.x backend currently)
+
+        * **CV_CAP_PROP_BUFFERSIZE** Amount of frames stored in internal buffer memory (note: only supported by DC1394 v 2.x backend currently)
 
     :param value: Value of the property.
 
@@ -487,7 +509,7 @@ VideoWriter constructors
 
     :param filename: Name of the output video file.
 
-    :param fourcc: 4-character code of codec used to compress the frames. For example, ``CV_FOURCC('P','I','M,'1')``  is a MPEG-1 codec, ``CV_FOURCC('M','J','P','G')``  is a motion-jpeg codec etc. List of codes can be obtained at `Video Codecs by FOURCC <http://www.fourcc.org/codecs.php>`_ page.
+    :param fourcc: 4-character code of codec used to compress the frames. For example, ``CV_FOURCC('P','I','M','1')``  is a MPEG-1 codec, ``CV_FOURCC('M','J','P','G')``  is a motion-jpeg codec etc. List of codes can be obtained at `Video Codecs by FOURCC <http://www.fourcc.org/codecs.php>`_ page.
 
     :param fps: Framerate of the created video stream.
 
@@ -546,4 +568,3 @@ Writes the next video frame
     :param image: The written frame
 
 The functions/methods write the specified image to video file. It must have the same size as has been specified when opening the video writer.
-

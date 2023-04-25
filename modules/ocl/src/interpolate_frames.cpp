@@ -25,7 +25,7 @@
 //
 //   * Redistribution's in binary form must reproduce the above copyright notice,
 //     this list of conditions and the following disclaimer in the documentation
-//     and/or other oclMaterials provided with the distribution.
+//     and/or other materials provided with the distribution.
 //
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
@@ -43,11 +43,9 @@
 //
 //M*/
 
-#include <iomanip>
 #include "precomp.hpp"
-#include "mcwutil.hpp"
+#include "opencl_kernels.hpp"
 
-using namespace std;
 using namespace cv;
 using namespace cv::ocl;
 
@@ -55,9 +53,6 @@ namespace cv
 {
     namespace ocl
     {
-        ///////////////////////////OpenCL kernel strings///////////////////////////
-        extern const char *interpolate_frames;
-
         namespace interpolate
         {
             //The following are ported from NPP_staging.cu
@@ -146,7 +141,7 @@ void interpolate::memsetKernel(float val, oclMat &img, int height, int offset)
     args.push_back( make_pair( sizeof(cl_int), (void *)&step));
     args.push_back( make_pair( sizeof(cl_int), (void *)&offset));
 
-    size_t globalThreads[3] = {img.cols, height, 1};
+    size_t globalThreads[3] = {(size_t)img.cols, (size_t)height, 1};
     size_t localThreads[3]  = {16, 16, 1};
     openCLExecuteKernel(clCxt, &interpolate_frames, kernelName, globalThreads, localThreads, args, -1, -1);
 }
@@ -166,7 +161,7 @@ void interpolate::normalizeKernel(oclMat &buffer, int height, int factor_offset,
     args.push_back( make_pair( sizeof(cl_int), (void *)&factor_offset));
     args.push_back( make_pair( sizeof(cl_int), (void *)&dst_offset));
 
-    size_t globalThreads[3] = {buffer.cols, height, 1};
+    size_t globalThreads[3] = {(size_t)buffer.cols, (size_t)height, 1};
     size_t localThreads[3]  = {16, 16, 1};
     openCLExecuteKernel(clCxt, &interpolate_frames, kernelName, globalThreads, localThreads, args, -1, -1);
 }
@@ -195,7 +190,7 @@ void interpolate::forwardWarpKernel(const oclMat &src, oclMat &buffer, const ocl
     args.push_back( make_pair( sizeof(cl_int), (void *)&d_offset));
     args.push_back( make_pair( sizeof(cl_float), (void *)&time_scale));
 
-    size_t globalThreads[3] = {src.cols, src.rows, 1};
+    size_t globalThreads[3] = {(size_t)src.cols, (size_t)src.rows, 1};
     size_t localThreads[3]  = {16, 16, 1};
     openCLExecuteKernel(clCxt, &interpolate_frames, kernelName, globalThreads, localThreads, args, -1, -1);
 }
@@ -225,7 +220,7 @@ void interpolate::blendFrames(const oclMat &frame0, const oclMat &/*frame1*/, co
     args.push_back( make_pair( sizeof(cl_int), (void *)&step));
     args.push_back( make_pair( sizeof(cl_float), (void *)&pos));
 
-    size_t globalThreads[3] = {frame0.cols, frame0.rows, 1};
+    size_t globalThreads[3] = {(size_t)frame0.cols, (size_t)frame0.rows, 1};
     size_t localThreads[3]  = {16, 16, 1};
     openCLExecuteKernel(clCxt, &interpolate_frames, kernelName, globalThreads, localThreads, args, -1, -1);
 }
@@ -236,6 +231,5 @@ void interpolate::bindImgTex(const oclMat &img, cl_mem &texture)
     {
         openCLFree(texture);
     }
-	texture = bindTexture(img);
+    texture = bindTexture(img);
 }
-

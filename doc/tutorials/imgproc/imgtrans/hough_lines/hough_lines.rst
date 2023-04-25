@@ -57,7 +57,7 @@ How does it work?
 
    We consider only points such that :math:`r > 0` and :math:`0< \theta < 2 \pi`.
 
-#. We can do the same operation above for all the points in an image. If the curves of two different points intersect in the plane :math:`\theta` - :math:`r`, that means that both points belong to a same line. For instance, following with the example above and drawing the plot for two more points: :math:`x_{1} = 9`, :math:`y_{1} = 4` and :math:`x_{2} = 12`, :math:`y_{2} = 3`, we get:
+#. We can do the same operation above for all the points in an image. If the curves of two different points intersect in the plane :math:`\theta` - :math:`r`, that means that both points belong to a same line. For instance, following with the example above and drawing the plot for two more points: :math:`x_{1} = 4`, :math:`y_{1} = 9` and :math:`x_{2} = 12`, :math:`y_{2} = 3`, we get:
 
    .. image:: images/Hough_Lines_Tutorial_Theory_2.jpg
       :alt: Polar plot of the family of lines for three points
@@ -89,9 +89,9 @@ Code
 ======
 
 .. |TutorialHoughLinesSimpleDownload| replace:: here
-.. _TutorialHoughLinesSimpleDownload: http://code.opencv.org/projects/opencv/repository/revisions/master/raw/samples/cpp/houghlines.cpp
+.. _TutorialHoughLinesSimpleDownload: https://github.com/Itseez/opencv/tree/master/samples/cpp/houghlines.cpp
 .. |TutorialHoughLinesFancyDownload| replace:: here
-.. _TutorialHoughLinesFancyDownload: http://code.opencv.org/projects/opencv/repository/revisions/master/raw/samples/cpp/tutorial_code/ImgTrans/HoughLines_Demo.cpp
+.. _TutorialHoughLinesFancyDownload: https://github.com/Itseez/opencv/tree/master/samples/cpp/tutorial_code/ImgTrans/HoughLines_Demo.cpp
 
 
 #. **What does this program do?**
@@ -290,4 +290,3 @@ We get the following result by using the Probabilistic Hough Line Transform:
    :align: center
 
 You may observe that the number of lines detected vary while you change the *threshold*. The explanation is sort of evident: If you establish a higher threshold, fewer lines will be detected (since you will need more points to declare a line detected).
-

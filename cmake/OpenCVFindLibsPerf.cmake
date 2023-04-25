@@ -46,27 +46,29 @@ else()
   set(HAVE_CSTRIPES 0)
 endif()
 
-# --- OpenMP ---
-if(NOT HAVE_TBB AND NOT HAVE_CSTRIPES)
-  set(_fname "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/omptest.cpp")
-  FILE(WRITE "${_fname}" "#ifndef _OPENMP\n#error\n#endif\nint main() { return 0; }\n")
-  TRY_COMPILE(HAVE_OPENMP "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp" "${_fname}")
-else()
-  set(HAVE_OPENMP 0)
-endif()
-
 # --- GCD ---
-if(APPLE AND NOT HAVE_TBB AND NOT HAVE_CSTRIPES AND NOT HAVE_OPENMP)
+if(APPLE AND NOT HAVE_TBB AND NOT HAVE_CSTRIPES)
   set(HAVE_GCD 1)
 else()
   set(HAVE_GCD 0)
 endif()
 
 # --- Concurrency ---
-if(MSVC AND NOT HAVE_TBB AND NOT HAVE_CSTRIPES AND NOT HAVE_OPENMP)
+if(MSVC AND NOT HAVE_TBB AND NOT HAVE_CSTRIPES)
   set(_fname "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/concurrencytest.cpp")
-  FILE(WRITE "${_fname}" "#if _MSC_VER < 1600\n#error\n#endif\nint main() { return 0; }\n")
-  TRY_COMPILE(HAVE_CONCURRENCY "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp" "${_fname}")
+  file(WRITE "${_fname}" "#if _MSC_VER < 1600\n#error\n#endif\nint main() { return 0; }\n")
+  try_compile(HAVE_CONCURRENCY "${CMAKE_BINARY_DIR}" "${_fname}")
+  file(REMOVE "${_fname}")
 else()
   set(HAVE_CONCURRENCY 0)
+endif()
+
+# --- OpenMP ---
+if(WITH_OPENMP)
+  find_package(OpenMP)
+  if(OPENMP_FOUND)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  endif()
+  set(HAVE_OPENMP "${OPENMP_FOUND}")
 endif()

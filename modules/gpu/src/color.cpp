@@ -48,6 +48,7 @@ using namespace cv::gpu;
 #if !defined (HAVE_CUDA) || defined (CUDA_DISABLER)
 
 void cv::gpu::cvtColor(const GpuMat&, GpuMat&, int, int, Stream&) { throw_nogpu(); }
+void cv::gpu::demosaicing(const GpuMat&, GpuMat&, int, int, Stream&) { throw_nogpu(); }
 void cv::gpu::swapChannels(GpuMat&, const int[], Stream&) { throw_nogpu(); }
 void cv::gpu::gammaCorrection(const GpuMat&, GpuMat&, bool, Stream&) { throw_nogpu(); }
 
@@ -62,10 +63,19 @@ namespace cv { namespace gpu {
         void Bayer2BGR_8u_gpu(PtrStepSzb src, PtrStepSzb dst, bool blue_last, bool start_with_green, cudaStream_t stream);
         template <int cn>
         void Bayer2BGR_16u_gpu(PtrStepSzb src, PtrStepSzb dst, bool blue_last, bool start_with_green, cudaStream_t stream);
+
+        template <int cn>
+        void MHCdemosaic(PtrStepSzb src, int2 sourceOffset, PtrStepSzb dst, int2 firstRed, cudaStream_t stream);
     }
 }}
 
 using namespace ::cv::gpu::device;
+
+#ifdef OPENCV_TINY_GPU_MODULE
+    #define APPEND_16U(func) 0
+#else
+    #define APPEND_16U(func) func ## _16u
+#endif
 
 namespace
 {
@@ -74,10 +84,11 @@ namespace
     void bgr_to_rgb(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgr_to_rgb_8u, 0, bgr_to_rgb_16u, 0, 0, bgr_to_rgb_32f};
+        static const gpu_func_t funcs[] = {bgr_to_rgb_8u, 0, APPEND_16U(bgr_to_rgb), 0, 0, bgr_to_rgb_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 3));
 
@@ -87,10 +98,11 @@ namespace
     void bgr_to_bgra(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgr_to_bgra_8u, 0, bgr_to_bgra_16u, 0, 0, bgr_to_bgra_32f};
+        static const gpu_func_t funcs[] = {bgr_to_bgra_8u, 0, APPEND_16U(bgr_to_bgra), 0, 0, bgr_to_bgra_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 4));
 
@@ -100,10 +112,11 @@ namespace
     void bgr_to_rgba(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgr_to_rgba_8u, 0, bgr_to_rgba_16u, 0, 0, bgr_to_rgba_32f};
+        static const gpu_func_t funcs[] = {bgr_to_rgba_8u, 0, APPEND_16U(bgr_to_rgba), 0, 0, bgr_to_rgba_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 4));
 
@@ -113,10 +126,11 @@ namespace
     void bgra_to_bgr(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgra_to_bgr_8u, 0, bgra_to_bgr_16u, 0, 0, bgra_to_bgr_32f};
+        static const gpu_func_t funcs[] = {bgra_to_bgr_8u, 0, APPEND_16U(bgra_to_bgr), 0, 0, bgra_to_bgr_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 4);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 3));
 
@@ -126,10 +140,11 @@ namespace
     void bgra_to_rgb(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgra_to_rgb_8u, 0, bgra_to_rgb_16u, 0, 0, bgra_to_rgb_32f};
+        static const gpu_func_t funcs[] = {bgra_to_rgb_8u, 0, APPEND_16U(bgra_to_rgb), 0, 0, bgra_to_rgb_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 4);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 3));
 
@@ -139,10 +154,11 @@ namespace
     void bgra_to_rgba(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgra_to_rgba_8u, 0, bgra_to_rgba_16u, 0, 0, bgra_to_rgba_32f};
+        static const gpu_func_t funcs[] = {bgra_to_rgba_8u, 0, APPEND_16U(bgra_to_rgba), 0, 0, bgra_to_rgba_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 4);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 4));
 
@@ -312,10 +328,11 @@ namespace
     void gray_to_bgr(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {gray_to_bgr_8u, 0, gray_to_bgr_16u, 0, 0, gray_to_bgr_32f};
+        static const gpu_func_t funcs[] = {gray_to_bgr_8u, 0, APPEND_16U(gray_to_bgr), 0, 0, gray_to_bgr_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 1);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 3));
 
@@ -325,10 +342,11 @@ namespace
     void gray_to_bgra(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {gray_to_bgra_8u, 0, gray_to_bgra_16u, 0, 0, gray_to_bgra_32f};
+        static const gpu_func_t funcs[] = {gray_to_bgra_8u, 0, APPEND_16U(gray_to_bgra), 0, 0, gray_to_bgra_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 1);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 4));
 
@@ -378,10 +396,11 @@ namespace
     void rgb_to_gray(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {rgb_to_gray_8u, 0, rgb_to_gray_16u, 0, 0, rgb_to_gray_32f};
+        static const gpu_func_t funcs[] = {rgb_to_gray_8u, 0, APPEND_16U(rgb_to_gray), 0, 0, rgb_to_gray_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 1));
 
@@ -391,10 +410,11 @@ namespace
     void bgr_to_gray(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgr_to_gray_8u, 0, bgr_to_gray_16u, 0, 0, bgr_to_gray_32f};
+        static const gpu_func_t funcs[] = {bgr_to_gray_8u, 0, APPEND_16U(bgr_to_gray), 0, 0, bgr_to_gray_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 1));
 
@@ -404,10 +424,11 @@ namespace
     void rgba_to_gray(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {rgba_to_gray_8u, 0, rgba_to_gray_16u, 0, 0, rgba_to_gray_32f};
+        static const gpu_func_t funcs[] = {rgba_to_gray_8u, 0, APPEND_16U(rgba_to_gray), 0, 0, rgba_to_gray_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 4);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 1));
 
@@ -417,10 +438,11 @@ namespace
     void bgra_to_gray(const GpuMat& src, GpuMat& dst, int, Stream& stream)
     {
         using namespace cv::gpu::device;
-        static const gpu_func_t funcs[] = {bgra_to_gray_8u, 0, bgra_to_gray_16u, 0, 0, bgra_to_gray_32f};
+        static const gpu_func_t funcs[] = {bgra_to_gray_8u, 0, APPEND_16U(bgra_to_gray), 0, 0, bgra_to_gray_32f};
 
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 4);
+        CV_Assert(funcs[src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), 1));
 
@@ -433,12 +455,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {rgb_to_yuv_8u, 0, rgb_to_yuv_16u, 0, 0, rgb_to_yuv_32f},
-                {rgba_to_yuv_8u, 0, rgba_to_yuv_16u, 0, 0, rgba_to_yuv_32f}
+                {rgb_to_yuv_8u, 0, APPEND_16U(rgb_to_yuv), 0, 0, rgb_to_yuv_32f},
+                {rgba_to_yuv_8u, 0, APPEND_16U(rgba_to_yuv), 0, 0, rgba_to_yuv_32f}
             },
             {
-                {rgb_to_yuv4_8u, 0, rgb_to_yuv4_16u, 0, 0, rgb_to_yuv4_32f},
-                {rgba_to_yuv4_8u, 0, rgba_to_yuv4_16u, 0, 0, rgba_to_yuv4_32f}
+                {rgb_to_yuv4_8u, 0, APPEND_16U(rgb_to_yuv4), 0, 0, rgb_to_yuv4_32f},
+                {rgba_to_yuv4_8u, 0, APPEND_16U(rgba_to_yuv4), 0, 0, rgba_to_yuv4_32f}
             }
         };
 
@@ -447,6 +469,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -459,12 +482,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {bgr_to_yuv_8u, 0, bgr_to_yuv_16u, 0, 0, bgr_to_yuv_32f},
-                {bgra_to_yuv_8u, 0, bgra_to_yuv_16u, 0, 0, bgra_to_yuv_32f}
+                {bgr_to_yuv_8u, 0, APPEND_16U(bgr_to_yuv), 0, 0, bgr_to_yuv_32f},
+                {bgra_to_yuv_8u, 0, APPEND_16U(bgra_to_yuv), 0, 0, bgra_to_yuv_32f}
             },
             {
-                {bgr_to_yuv4_8u, 0, bgr_to_yuv4_16u, 0, 0, bgr_to_yuv4_32f},
-                {bgra_to_yuv4_8u, 0, bgra_to_yuv4_16u, 0, 0, bgra_to_yuv4_32f}
+                {bgr_to_yuv4_8u, 0, APPEND_16U(bgr_to_yuv4), 0, 0, bgr_to_yuv4_32f},
+                {bgra_to_yuv4_8u, 0, APPEND_16U(bgra_to_yuv4), 0, 0, bgra_to_yuv4_32f}
             }
         };
 
@@ -473,6 +496,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -485,12 +509,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {yuv_to_rgb_8u, 0, yuv_to_rgb_16u, 0, 0, yuv_to_rgb_32f},
-                {yuv4_to_rgb_8u, 0, yuv4_to_rgb_16u, 0, 0, yuv4_to_rgb_32f}
+                {yuv_to_rgb_8u, 0, APPEND_16U(yuv_to_rgb), 0, 0, yuv_to_rgb_32f},
+                {yuv4_to_rgb_8u, 0, APPEND_16U(yuv4_to_rgb), 0, 0, yuv4_to_rgb_32f}
             },
             {
-                {yuv_to_rgba_8u, 0, yuv_to_rgba_16u, 0, 0, yuv_to_rgba_32f},
-                {yuv4_to_rgba_8u, 0, yuv4_to_rgba_16u, 0, 0, yuv4_to_rgba_32f}
+                {yuv_to_rgba_8u, 0, APPEND_16U(yuv_to_rgba), 0, 0, yuv_to_rgba_32f},
+                {yuv4_to_rgba_8u, 0, APPEND_16U(yuv4_to_rgba), 0, 0, yuv4_to_rgba_32f}
             }
         };
 
@@ -499,6 +523,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -511,12 +536,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {yuv_to_bgr_8u, 0, yuv_to_bgr_16u, 0, 0, yuv_to_bgr_32f},
-                {yuv4_to_bgr_8u, 0, yuv4_to_bgr_16u, 0, 0, yuv4_to_bgr_32f}
+                {yuv_to_bgr_8u, 0, APPEND_16U(yuv_to_bgr), 0, 0, yuv_to_bgr_32f},
+                {yuv4_to_bgr_8u, 0, APPEND_16U(yuv4_to_bgr), 0, 0, yuv4_to_bgr_32f}
             },
             {
-                {yuv_to_bgra_8u, 0, yuv_to_bgra_16u, 0, 0, yuv_to_bgra_32f},
-                {yuv4_to_bgra_8u, 0, yuv4_to_bgra_16u, 0, 0, yuv4_to_bgra_32f}
+                {yuv_to_bgra_8u, 0, APPEND_16U(yuv_to_bgra), 0, 0, yuv_to_bgra_32f},
+                {yuv4_to_bgra_8u, 0, APPEND_16U(yuv4_to_bgra), 0, 0, yuv4_to_bgra_32f}
             }
         };
 
@@ -525,6 +550,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -537,12 +563,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {rgb_to_YCrCb_8u, 0, rgb_to_YCrCb_16u, 0, 0, rgb_to_YCrCb_32f},
-                {rgba_to_YCrCb_8u, 0, rgba_to_YCrCb_16u, 0, 0, rgba_to_YCrCb_32f}
+                {rgb_to_YCrCb_8u, 0, APPEND_16U(rgb_to_YCrCb), 0, 0, rgb_to_YCrCb_32f},
+                {rgba_to_YCrCb_8u, 0, APPEND_16U(rgba_to_YCrCb), 0, 0, rgba_to_YCrCb_32f}
             },
             {
-                {rgb_to_YCrCb4_8u, 0, rgb_to_YCrCb4_16u, 0, 0, rgb_to_YCrCb4_32f},
-                {rgba_to_YCrCb4_8u, 0, rgba_to_YCrCb4_16u, 0, 0, rgba_to_YCrCb4_32f}
+                {rgb_to_YCrCb4_8u, 0, APPEND_16U(rgb_to_YCrCb4), 0, 0, rgb_to_YCrCb4_32f},
+                {rgba_to_YCrCb4_8u, 0, APPEND_16U(rgba_to_YCrCb4), 0, 0, rgba_to_YCrCb4_32f}
             }
         };
 
@@ -551,6 +577,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -563,12 +590,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {bgr_to_YCrCb_8u, 0, bgr_to_YCrCb_16u, 0, 0, bgr_to_YCrCb_32f},
-                {bgra_to_YCrCb_8u, 0, bgra_to_YCrCb_16u, 0, 0, bgra_to_YCrCb_32f}
+                {bgr_to_YCrCb_8u, 0, APPEND_16U(bgr_to_YCrCb), 0, 0, bgr_to_YCrCb_32f},
+                {bgra_to_YCrCb_8u, 0, APPEND_16U(bgra_to_YCrCb), 0, 0, bgra_to_YCrCb_32f}
             },
             {
-                {bgr_to_YCrCb4_8u, 0, bgr_to_YCrCb4_16u, 0, 0, bgr_to_YCrCb4_32f},
-                {bgra_to_YCrCb4_8u, 0, bgra_to_YCrCb4_16u, 0, 0, bgra_to_YCrCb4_32f}
+                {bgr_to_YCrCb4_8u, 0, APPEND_16U(bgr_to_YCrCb4), 0, 0, bgr_to_YCrCb4_32f},
+                {bgra_to_YCrCb4_8u, 0, APPEND_16U(bgra_to_YCrCb4), 0, 0, bgra_to_YCrCb4_32f}
             }
         };
 
@@ -577,6 +604,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -589,12 +617,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {YCrCb_to_rgb_8u, 0, YCrCb_to_rgb_16u, 0, 0, YCrCb_to_rgb_32f},
-                {YCrCb4_to_rgb_8u, 0, YCrCb4_to_rgb_16u, 0, 0, YCrCb4_to_rgb_32f}
+                {YCrCb_to_rgb_8u, 0, APPEND_16U(YCrCb_to_rgb), 0, 0, YCrCb_to_rgb_32f},
+                {YCrCb4_to_rgb_8u, 0, APPEND_16U(YCrCb4_to_rgb), 0, 0, YCrCb4_to_rgb_32f}
             },
             {
-                {YCrCb_to_rgba_8u, 0, YCrCb_to_rgba_16u, 0, 0, YCrCb_to_rgba_32f},
-                {YCrCb4_to_rgba_8u, 0, YCrCb4_to_rgba_16u, 0, 0, YCrCb4_to_rgba_32f}
+                {YCrCb_to_rgba_8u, 0, APPEND_16U(YCrCb_to_rgba), 0, 0, YCrCb_to_rgba_32f},
+                {YCrCb4_to_rgba_8u, 0, APPEND_16U(YCrCb4_to_rgba), 0, 0, YCrCb4_to_rgba_32f}
             }
         };
 
@@ -603,6 +631,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -615,12 +644,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {YCrCb_to_bgr_8u, 0, YCrCb_to_bgr_16u, 0, 0, YCrCb_to_bgr_32f},
-                {YCrCb4_to_bgr_8u, 0, YCrCb4_to_bgr_16u, 0, 0, YCrCb4_to_bgr_32f}
+                {YCrCb_to_bgr_8u, 0, APPEND_16U(YCrCb_to_bgr), 0, 0, YCrCb_to_bgr_32f},
+                {YCrCb4_to_bgr_8u, 0, APPEND_16U(YCrCb4_to_bgr), 0, 0, YCrCb4_to_bgr_32f}
             },
             {
-                {YCrCb_to_bgra_8u, 0, YCrCb_to_bgra_16u, 0, 0, YCrCb_to_bgra_32f},
-                {YCrCb4_to_bgra_8u, 0, YCrCb4_to_bgra_16u, 0, 0, YCrCb4_to_bgra_32f}
+                {YCrCb_to_bgra_8u, 0, APPEND_16U(YCrCb_to_bgra), 0, 0, YCrCb_to_bgra_32f},
+                {YCrCb4_to_bgra_8u, 0, APPEND_16U(YCrCb4_to_bgra), 0, 0, YCrCb4_to_bgra_32f}
             }
         };
 
@@ -629,6 +658,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -641,12 +671,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {rgb_to_xyz_8u, 0, rgb_to_xyz_16u, 0, 0, rgb_to_xyz_32f},
-                {rgba_to_xyz_8u, 0, rgba_to_xyz_16u, 0, 0, rgba_to_xyz_32f}
+                {rgb_to_xyz_8u, 0, APPEND_16U(rgb_to_xyz), 0, 0, rgb_to_xyz_32f},
+                {rgba_to_xyz_8u, 0, APPEND_16U(rgba_to_xyz), 0, 0, rgba_to_xyz_32f}
             },
             {
-                {rgb_to_xyz4_8u, 0, rgb_to_xyz4_16u, 0, 0, rgb_to_xyz4_32f},
-                {rgba_to_xyz4_8u, 0, rgba_to_xyz4_16u, 0, 0, rgba_to_xyz4_32f}
+                {rgb_to_xyz4_8u, 0, APPEND_16U(rgb_to_xyz4), 0, 0, rgb_to_xyz4_32f},
+                {rgba_to_xyz4_8u, 0, APPEND_16U(rgba_to_xyz4), 0, 0, rgba_to_xyz4_32f}
             }
         };
 
@@ -655,6 +685,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -667,12 +698,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {bgr_to_xyz_8u, 0, bgr_to_xyz_16u, 0, 0, bgr_to_xyz_32f},
-                {bgra_to_xyz_8u, 0, bgra_to_xyz_16u, 0, 0, bgra_to_xyz_32f}
+                {bgr_to_xyz_8u, 0, APPEND_16U(bgr_to_xyz), 0, 0, bgr_to_xyz_32f},
+                {bgra_to_xyz_8u, 0, APPEND_16U(bgra_to_xyz), 0, 0, bgra_to_xyz_32f}
             },
             {
-                {bgr_to_xyz4_8u, 0, bgr_to_xyz4_16u, 0, 0, bgr_to_xyz4_32f},
-                {bgra_to_xyz4_8u, 0, bgra_to_xyz4_16u, 0, 0, bgra_to_xyz4_32f}
+                {bgr_to_xyz4_8u, 0, APPEND_16U(bgr_to_xyz4), 0, 0, bgr_to_xyz4_32f},
+                {bgra_to_xyz4_8u, 0, APPEND_16U(bgra_to_xyz4), 0, 0, bgra_to_xyz4_32f}
             }
         };
 
@@ -681,6 +712,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -693,12 +725,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {xyz_to_rgb_8u, 0, xyz_to_rgb_16u, 0, 0, xyz_to_rgb_32f},
-                {xyz4_to_rgb_8u, 0, xyz4_to_rgb_16u, 0, 0, xyz4_to_rgb_32f}
+                {xyz_to_rgb_8u, 0, APPEND_16U(xyz_to_rgb), 0, 0, xyz_to_rgb_32f},
+                {xyz4_to_rgb_8u, 0, APPEND_16U(xyz4_to_rgb), 0, 0, xyz4_to_rgb_32f}
             },
             {
-                {xyz_to_rgba_8u, 0, xyz_to_rgba_16u, 0, 0, xyz_to_rgba_32f},
-                {xyz4_to_rgba_8u, 0, xyz4_to_rgba_16u, 0, 0, xyz4_to_rgba_32f}
+                {xyz_to_rgba_8u, 0, APPEND_16U(xyz_to_rgba), 0, 0, xyz_to_rgba_32f},
+                {xyz4_to_rgba_8u, 0, APPEND_16U(xyz4_to_rgba), 0, 0, xyz4_to_rgba_32f}
             }
         };
 
@@ -707,6 +739,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -719,12 +752,12 @@ namespace
         static const gpu_func_t funcs[2][2][6] =
         {
             {
-                {xyz_to_bgr_8u, 0, xyz_to_bgr_16u, 0, 0, xyz_to_bgr_32f},
-                {xyz4_to_bgr_8u, 0, xyz4_to_bgr_16u, 0, 0, xyz4_to_bgr_32f}
+                {xyz_to_bgr_8u, 0, APPEND_16U(xyz_to_bgr), 0, 0, xyz_to_bgr_32f},
+                {xyz4_to_bgr_8u, 0, APPEND_16U(xyz4_to_bgr), 0, 0, xyz4_to_bgr_32f}
             },
             {
-                {xyz_to_bgra_8u, 0, xyz_to_bgra_16u, 0, 0, xyz_to_bgra_32f},
-                {xyz4_to_bgra_8u, 0, xyz4_to_bgra_16u, 0, 0, xyz4_to_bgra_32f}
+                {xyz_to_bgra_8u, 0, APPEND_16U(xyz_to_bgra), 0, 0, xyz_to_bgra_32f},
+                {xyz4_to_bgra_8u, 0, APPEND_16U(xyz4_to_bgra), 0, 0, xyz4_to_bgra_32f}
             }
         };
 
@@ -733,6 +766,7 @@ namespace
         CV_Assert(src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F);
         CV_Assert(src.channels() == 3 || src.channels() == 4);
         CV_Assert(dcn == 3 || dcn == 4);
+        CV_Assert(funcs[dcn == 4][src.channels() == 4][src.depth()] != 0);
 
         dst.create(src.size(), CV_MAKETYPE(src.depth(), dcn));
 
@@ -1573,7 +1607,7 @@ namespace
 
     void rgba_to_mbgra(const GpuMat& src, GpuMat& dst, int, Stream& st)
     {
-    #if (CUDA_VERSION < 5000)
+    #if (CUDART_VERSION < 5000)
         (void)src;
         (void)dst;
         (void)st;
@@ -1620,25 +1654,55 @@ namespace
 
         funcs[src.depth()][dcn - 1](src, dst, blue_last, start_with_green, StreamAccessor::getStream(stream));
     }
-
     void bayerBG_to_bgr(const GpuMat& src, GpuMat& dst, int dcn, Stream& stream)
     {
         bayer_to_bgr(src, dst, dcn, false, false, stream);
     }
-
     void bayerGB_to_bgr(const GpuMat& src, GpuMat& dst, int dcn, Stream& stream)
     {
         bayer_to_bgr(src, dst, dcn, false, true, stream);
     }
-
     void bayerRG_to_bgr(const GpuMat& src, GpuMat& dst, int dcn, Stream& stream)
     {
         bayer_to_bgr(src, dst, dcn, true, false, stream);
     }
-
     void bayerGR_to_bgr(const GpuMat& src, GpuMat& dst, int dcn, Stream& stream)
     {
         bayer_to_bgr(src, dst, dcn, true, true, stream);
+    }
+
+    void bayer_to_gray(const GpuMat& src, GpuMat& dst, bool blue_last, bool start_with_green, Stream& stream)
+    {
+        typedef void (*func_t)(PtrStepSzb src, PtrStepSzb dst, bool blue_last, bool start_with_green, cudaStream_t stream);
+        static const func_t funcs[3] =
+        {
+            Bayer2BGR_8u_gpu<1>,
+            0,
+            Bayer2BGR_16u_gpu<1>,
+        };
+
+        CV_Assert(src.type() == CV_8UC1 || src.type() == CV_16UC1);
+        CV_Assert(src.rows > 2 && src.cols > 2);
+
+        dst.create(src.size(), CV_MAKETYPE(src.depth(), 1));
+
+        funcs[src.depth()](src, dst, blue_last, start_with_green, StreamAccessor::getStream(stream));
+    }
+    void bayerBG_to_gray(const GpuMat& src, GpuMat& dst, int /*dcn*/, Stream& stream)
+    {
+        bayer_to_gray(src, dst, false, false, stream);
+    }
+    void bayerGB_to_gray(const GpuMat& src, GpuMat& dst, int /*dcn*/, Stream& stream)
+    {
+        bayer_to_gray(src, dst, false, true, stream);
+    }
+    void bayerRG_to_gray(const GpuMat& src, GpuMat& dst, int /*dcn*/, Stream& stream)
+    {
+        bayer_to_gray(src, dst, true, false, stream);
+    }
+    void bayerGR_to_gray(const GpuMat& src, GpuMat& dst, int /*dcn*/, Stream& stream)
+    {
+        bayer_to_gray(src, dst, true, true, stream);
     }
 }
 
@@ -1756,10 +1820,10 @@ void cv::gpu::cvtColor(const GpuMat& src, GpuMat& dst, int code, int dcn, Stream
         yuv_to_bgr,             // CV_YUV2BGR      = 84
         yuv_to_rgb,             // CV_YUV2RGB      = 85
 
-        0,                      // CV_BayerBG2GRAY = 86
-        0,                      // CV_BayerGB2GRAY = 87
-        0,                      // CV_BayerRG2GRAY = 88
-        0,                      // CV_BayerGR2GRAY = 89
+        bayerBG_to_gray,        // CV_BayerBG2GRAY = 86
+        bayerGB_to_gray,        // CV_BayerGB2GRAY = 87
+        bayerRG_to_gray,        // CV_BayerRG2GRAY = 88
+        bayerGR_to_gray,        // CV_BayerGR2GRAY = 89
 
         //YUV 4:2:0 formats family
         0,                      // CV_YUV2RGB_NV12 = 90,
@@ -1825,6 +1889,74 @@ void cv::gpu::cvtColor(const GpuMat& src, GpuMat& dst, int code, int dcn, Stream
     func(src, dst, dcn, stream);
 }
 
+void cv::gpu::demosaicing(const GpuMat& src, GpuMat& dst, int code, int dcn, Stream& stream)
+{
+    const int depth = src.depth();
+
+    CV_Assert( src.channels() == 1 && !src.empty() );
+
+    switch (code)
+    {
+    case CV_BayerBG2GRAY: case CV_BayerGB2GRAY: case CV_BayerRG2GRAY: case CV_BayerGR2GRAY:
+        bayer_to_gray(src, dst, code == CV_BayerBG2GRAY || code == CV_BayerGB2GRAY, code == CV_BayerGB2GRAY || code == CV_BayerGR2GRAY, stream);
+        break;
+
+    case CV_BayerBG2BGR: case CV_BayerGB2BGR: case CV_BayerRG2BGR: case CV_BayerGR2BGR:
+        bayer_to_bgr(src, dst, dcn, code == CV_BayerBG2BGR || code == CV_BayerGB2BGR, code == CV_BayerGB2BGR || code == CV_BayerGR2BGR, stream);
+        break;
+
+    case COLOR_BayerBG2BGR_MHT: case COLOR_BayerGB2BGR_MHT: case COLOR_BayerRG2BGR_MHT: case COLOR_BayerGR2BGR_MHT:
+    {
+        if (dcn <= 0)
+            dcn = 3;
+
+        CV_Assert( depth == CV_8U );
+        CV_Assert( dcn == 3 || dcn == 4 );
+
+        dst.create(src.size(), CV_MAKETYPE(depth, dcn));
+        dst.setTo(Scalar::all(0));
+
+        Size wholeSize;
+        Point ofs;
+        src.locateROI(wholeSize, ofs);
+        PtrStepSzb srcWhole(wholeSize.height, wholeSize.width, src.datastart, src.step);
+
+        const int2 firstRed = make_int2(code == COLOR_BayerRG2BGR_MHT || code == COLOR_BayerGB2BGR_MHT ? 0 : 1,
+                                        code == COLOR_BayerRG2BGR_MHT || code == COLOR_BayerGR2BGR_MHT ? 0 : 1);
+
+        if (dcn == 3)
+            device::MHCdemosaic<3>(srcWhole, make_int2(ofs.x, ofs.y), dst, firstRed, StreamAccessor::getStream(stream));
+        else
+            device::MHCdemosaic<4>(srcWhole, make_int2(ofs.x, ofs.y), dst, firstRed, StreamAccessor::getStream(stream));
+
+        break;
+    }
+
+    case COLOR_BayerBG2GRAY_MHT: case COLOR_BayerGB2GRAY_MHT: case COLOR_BayerRG2GRAY_MHT: case COLOR_BayerGR2GRAY_MHT:
+    {
+        CV_Assert( depth == CV_8U );
+
+        dst.create(src.size(), CV_MAKETYPE(depth, 1));
+        dst.setTo(Scalar::all(0));
+
+        Size wholeSize;
+        Point ofs;
+        src.locateROI(wholeSize, ofs);
+        PtrStepSzb srcWhole(wholeSize.height, wholeSize.width, src.datastart, src.step);
+
+        const int2 firstRed = make_int2(code == COLOR_BayerRG2BGR_MHT || code == COLOR_BayerGB2BGR_MHT ? 0 : 1,
+                                        code == COLOR_BayerRG2BGR_MHT || code == COLOR_BayerGR2BGR_MHT ? 0 : 1);
+
+        device::MHCdemosaic<1>(srcWhole, make_int2(ofs.x, ofs.y), dst, firstRed, StreamAccessor::getStream(stream));
+
+        break;
+    }
+
+    default:
+        CV_Error( CV_StsBadFlag, "Unknown / unsupported color conversion code" );
+    }
+}
+
 void cv::gpu::swapChannels(GpuMat& image, const int dstOrder[4], Stream& s)
 {
     CV_Assert(image.type() == CV_8UC4);
@@ -1845,7 +1977,7 @@ void cv::gpu::swapChannels(GpuMat& image, const int dstOrder[4], Stream& s)
 
 void cv::gpu::gammaCorrection(const GpuMat& src, GpuMat& dst, bool forward, Stream& stream)
 {
-#if (CUDA_VERSION < 5000)
+#if (CUDART_VERSION < 5000)
     (void)src;
     (void)dst;
     (void)forward;

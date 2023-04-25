@@ -22,13 +22,13 @@
 //
 //   * Redistribution's in binary form must reproduce the above copyright notice,
 //     this list of conditions and the following disclaimer in the documentation
-//     and/or other GpuMaterials provided with the distribution.
+//     and/or other materials provided with the distribution.
 //
 //   * The name of the copyright holders may not be used to endorse or promote products
 //     derived from this software without specific prior written permission.
 //
 // This software is provided by the copyright holders and contributors "as is" and
-// any express or bpied warranties, including, but not limited to, the bpied
+// any express or implied warranties, including, but not limited to, the implied
 // warranties of merchantability and fitness for a particular purpose are disclaimed.
 // In no event shall the Intel Corporation or contributors be liable for any direct,
 // indirect, incidental, special, exemplary, or consequential damages
@@ -77,6 +77,17 @@ void cv::gpu::bilateralFilter(const GpuMat& src, GpuMat& dst, int kernel_size, f
 
     typedef void (*func_t)(const PtrStepSzb& src, PtrStepSzb dst, int kernel_size, float sigma_spatial, float sigma_color, int borderMode, cudaStream_t s);
 
+#ifdef OPENCV_TINY_GPU_MODULE
+    static const func_t funcs[6][4] =
+    {
+        {bilateral_filter_gpu<uchar>       , 0 /*bilateral_filter_gpu<uchar2>*/ , bilateral_filter_gpu<uchar3>       , bilateral_filter_gpu<uchar4>       },
+        {0 /*bilateral_filter_gpu<schar>*/ , 0 /*bilateral_filter_gpu<schar2>*/ , 0 /*bilateral_filter_gpu<schar3>*/ , 0 /*bilateral_filter_gpu<schar4>*/ },
+        {0 /*bilateral_filter_gpu<ushort>*/, 0 /*bilateral_filter_gpu<ushort2>*/, 0 /*bilateral_filter_gpu<ushort3>*/, 0 /*bilateral_filter_gpu<ushort4>*/},
+        {0 /*bilateral_filter_gpu<short>*/ , 0 /*bilateral_filter_gpu<short2>*/ , 0 /*bilateral_filter_gpu<short3>*/ , 0 /*bilateral_filter_gpu<short4>*/ },
+        {0 /*bilateral_filter_gpu<int>*/   , 0 /*bilateral_filter_gpu<int2>*/   , 0 /*bilateral_filter_gpu<int3>*/   , 0 /*bilateral_filter_gpu<int4>*/   },
+        {bilateral_filter_gpu<float>       , 0 /*bilateral_filter_gpu<float2>*/ , bilateral_filter_gpu<float3>       , bilateral_filter_gpu<float4>       }
+    };
+#else
     static const func_t funcs[6][4] =
     {
         {bilateral_filter_gpu<uchar>      , 0 /*bilateral_filter_gpu<uchar2>*/ , bilateral_filter_gpu<uchar3>      , bilateral_filter_gpu<uchar4>      },
@@ -86,6 +97,7 @@ void cv::gpu::bilateralFilter(const GpuMat& src, GpuMat& dst, int kernel_size, f
         {0 /*bilateral_filter_gpu<int>*/  , 0 /*bilateral_filter_gpu<int2>*/   , 0 /*bilateral_filter_gpu<int3>*/  , 0 /*bilateral_filter_gpu<int4>*/  },
         {bilateral_filter_gpu<float>      , 0 /*bilateral_filter_gpu<float2>*/ , bilateral_filter_gpu<float3>      , bilateral_filter_gpu<float4>      }
     };
+#endif
 
     sigma_color = (sigma_color <= 0 ) ? 1 : sigma_color;
     sigma_spatial = (sigma_spatial <= 0 ) ? 1 : sigma_spatial;
@@ -194,5 +206,3 @@ void cv::gpu::FastNonLocalMeansDenoising::labMethod( const GpuMat& src, GpuMat& 
 
 
 #endif
-
-

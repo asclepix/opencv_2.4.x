@@ -69,13 +69,13 @@ struct CalcRotation
         K_from(0,0) = cameras[edge.from].focal;
         K_from(1,1) = cameras[edge.from].focal * cameras[edge.from].aspect;
         K_from(0,2) = cameras[edge.from].ppx;
-        K_from(0,2) = cameras[edge.from].ppy;
+        K_from(1,2) = cameras[edge.from].ppy;
 
         Mat_<double> K_to = Mat::eye(3, 3, CV_64F);
         K_to(0,0) = cameras[edge.to].focal;
         K_to(1,1) = cameras[edge.to].focal * cameras[edge.to].aspect;
         K_to(0,2) = cameras[edge.to].ppx;
-        K_to(0,2) = cameras[edge.to].ppy;
+        K_to(1,2) = cameras[edge.to].ppy;
 
         Mat R = K_from.inv() * pairwise_matches[pair_idx].H.inv() * K_to;
         cameras[edge.to].R = cameras[edge.from].R * R;
@@ -589,6 +589,11 @@ void waveCorrect(vector<Mat> &rmats, WaveCorrectKind kind)
 #if ENABLE_LOG
     int64 t = getTickCount();
 #endif
+    if (rmats.size() <= 1)
+    {
+        LOGLN("Wave correcting, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
+        return;
+    }
 
     Mat moment = Mat::zeros(3, 3, CV_32F);
     for (size_t i = 0; i < rmats.size(); ++i)
@@ -611,7 +616,14 @@ void waveCorrect(vector<Mat> &rmats, WaveCorrectKind kind)
     for (size_t i = 0; i < rmats.size(); ++i)
         img_k += rmats[i].col(2);
     Mat rg0 = rg1.cross(img_k);
-    rg0 /= norm(rg0);
+    double rg0_norm = norm(rg0);
+
+    if( rg0_norm <= DBL_MIN )
+    {
+        return;
+    }
+
+    rg0 /= rg0_norm;
 
     Mat rg2 = rg0.cross(rg1);
 
@@ -851,4 +863,3 @@ void findMaxSpanningTree(int num_images, const vector<MatchesInfo> &pairwise_mat
 
 } // namespace detail
 } // namespace cv
-

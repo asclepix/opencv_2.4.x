@@ -20,8 +20,6 @@ ocv_module_include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/src2"
     )
 
-
-
 set(opencv_hdrs
     "${OPENCV_MODULE_opencv_core_LOCATION}/include/opencv2/core/core.hpp"
     "${OPENCV_MODULE_opencv_flann_LOCATION}/include/opencv2/flann/miniflann.hpp"
@@ -66,7 +64,11 @@ add_library(${the_module} SHARED src2/cv2.cpp ${CMAKE_CURRENT_BINARY_DIR}/genera
 if(PYTHON_DEBUG_LIBRARIES AND NOT PYTHON_LIBRARIES MATCHES "optimized.*debug")
   target_link_libraries(${the_module} debug ${PYTHON_DEBUG_LIBRARIES} optimized ${PYTHON_LIBRARIES})
 else()
-  target_link_libraries(${the_module} ${PYTHON_LIBRARIES})
+  if(APPLE)
+    set_target_properties(${the_module} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+  else()
+    target_link_libraries(${the_module} ${PYTHON_LIBRARIES})
+  endif()
 endif()
 target_link_libraries(${the_module} ${OPENCV_MODULE_${the_module}_DEPS})
 
@@ -105,10 +107,29 @@ else()
   set(PYTHON_INSTALL_CONFIGURATIONS "")
 endif()
 
-install(TARGETS ${the_module}
-        ${PYTHON_INSTALL_CONFIGURATIONS}
-        RUNTIME DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT main
-        LIBRARY DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT main
-        ARCHIVE DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT main
-        )
-install(FILES src2/cv.py ${PYTHON_INSTALL_CONFIGURATIONS} DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT main)
+if(WIN32)
+  set(PYTHON_INSTALL_ARCHIVE "")
+else()
+  set(PYTHON_INSTALL_ARCHIVE ARCHIVE DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT python)
+endif()
+
+if(NOT INSTALL_CREATE_DISTRIB)
+  install(TARGETS ${the_module}
+          ${PYTHON_INSTALL_CONFIGURATIONS}
+          RUNTIME DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT python
+          LIBRARY DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT python
+          ${PYTHON_INSTALL_ARCHIVE}
+          )
+  install(FILES src2/cv.py ${PYTHON_INSTALL_CONFIGURATIONS} DESTINATION ${PYTHON_PACKAGES_PATH} COMPONENT python)
+else()
+  if(DEFINED PYTHON_VERSION_MAJOR)
+    set(__ver "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+  else()
+    set(__ver "unknown")
+  endif()
+  install(TARGETS ${the_module}
+          CONFIGURATIONS Release
+          RUNTIME DESTINATION python/${__ver}/${OpenCV_ARCH} COMPONENT python
+          LIBRARY DESTINATION python/${__ver}/${OpenCV_ARCH} COMPONENT python
+          )
+endif()

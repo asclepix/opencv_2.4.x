@@ -100,8 +100,8 @@ typedef struct CvLCMData
 //    Context:
 //    Parameters:
 //      LCM : in&out.
-//    Returns: 1, if hybrid model was succesfully constructed
-//             0, if some error occures
+//    Returns: 1, if hybrid model was successfully constructed
+//             0, if some error occurs
 //F*/
 CV_IMPL
 int _cvConstructLCM(CvLCM* LCM);
@@ -718,7 +718,3 @@ void _cvProjectionPointToSegment(CvPoint2D32f* PointO,
     PrPoint->y = PointO->y - VectorAO.y + alfa*VectorAB.y;
     return;
 }//end of _cvProjectionPointToSegment
-
-
-
-

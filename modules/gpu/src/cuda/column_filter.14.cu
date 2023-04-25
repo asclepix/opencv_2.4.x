@@ -12,7 +12,6 @@
 //
 // Copyright (C) 2000-2008, Intel Corporation, all rights reserved.
 // Copyright (C) 2009, Willow Garage Inc., all rights reserved.
-// Copyright (C) 1993-2011, NVIDIA Corporation, all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -45,9 +44,13 @@
 
 #include "column_filter.h"
 
+#ifndef OPENCV_TINY_GPU_MODULE
+
 namespace filter
 {
     template void linearColumn<float4, int4>(PtrStepSzb src, PtrStepSzb dst, const float* kernel, int ksize, int anchor, int brd_type, int cc, cudaStream_t stream);
 }
+
+#endif
 
 #endif /* CUDA_DISABLER */

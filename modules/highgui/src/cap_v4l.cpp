@@ -14,7 +14,9 @@ It has been tested with the motempl sample program
 First Patch:  August 24, 2004 Travis Wood   TravisOCV@tkwood.com
 For Release:  OpenCV-Linux Beta4  opencv-0.9.6
 Tested On:    LMLBT44 with 8 video inputs
-Problems?     Post problems/fixes to OpenCV group on groups.yahoo.com
+Problems?     Post your questions at answers.opencv.org,
+              Report bugs at code.opencv.org,
+              Submit your fixes at https://github.com/Itseez/opencv/
 Patched Comments:
 
 TW: The cv cam utils that came with the initial release of OpenCV for LINUX Beta4
@@ -100,7 +102,7 @@ I modified the following:
     autosetup_capture_mode_v4l2 -> autodetect capture modes for v4l2
   - Modifications are according with Video4Linux old codes
   - Video4Linux handling is automatically if it does not recognize a Video4Linux2 device
-  - Tested succesful with Logitech Quickcam Express (V4L), Creative Vista (V4L) and Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Logitech Quickcam Express (V4L), Creative Vista (V4L) and Genius VideoCam Notebook (V4L2)
   - Correct source lines with compiler warning messages
   - Information message from v4l/v4l2 detection
 
@@ -111,7 +113,7 @@ I modified the following:
   - SN9C10x chip based webcams support
   - New methods are internal:
     bayer2rgb24, sonix_decompress -> decoder routines for SN9C10x decoding from Takafumi Mizuno <taka-qce@ls-a.jp> with his pleasure :)
-  - Tested succesful with Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Genius VideoCam Notebook (V4L2)
 
 Sixth Patch: Sept 10, 2005 Csaba Kertesz sign@freemail.hu
 For Release:  OpenCV-Linux Beta5 OpenCV-0.9.7
@@ -121,7 +123,7 @@ I added the following:
   - Get and change V4L capture controls (hue, saturation, brightness, contrast)
   - New method is internal:
     icvSetControl -> set capture controls
-  - Tested succesful with Creative Vista (V4L)
+  - Tested successfully with Creative Vista (V4L)
 
 Seventh Patch: Sept 10, 2005 Csaba Kertesz sign@freemail.hu
 For Release:  OpenCV-Linux Beta5 OpenCV-0.9.7
@@ -130,7 +132,7 @@ I added the following:
   - Detect, get and change V4L2 capture controls (hue, saturation, brightness, contrast, gain)
   - New methods are internal:
     v4l2_scan_controls_enumerate_menu, v4l2_scan_controls -> detect capture control intervals
-  - Tested succesful with Genius VideoCam Notebook (V4L2)
+  - Tested successfully with Genius VideoCam Notebook (V4L2)
 
 8th patch: Jan 5, 2006, Olivier.Bornet@idiap.ch
 Add support of V4L2_PIX_FMT_YUYV and V4L2_PIX_FMT_MJPEG.
@@ -153,6 +155,11 @@ the symptoms were damaged image and 'Corrupt JPEG data: premature end of data se
   could be filtered out
 - USE_TEMP_BUFFER fixes the main problem (improper buffer management) and
   prevents bad images in the first place
+
+11th patch: April 2, 2013, Forrest Reiling forrest.reiling@gmail.com
+Added v4l2 support for getting capture property CV_CAP_PROP_POS_MSEC.
+Returns the millisecond timestamp of the last frame grabbed or 0 if no frames have been grabbed
+Used to successfully synchonize 2 Logitech C310 USB webcams to within 16 ms of one another
 
 
 make & enjoy!
@@ -318,7 +325,8 @@ typedef struct CvCaptureCAM_V4L
    struct v4l2_control control;
    enum v4l2_buf_type type;
    struct v4l2_queryctrl queryctrl;
-   struct v4l2_querymenu querymenu;
+
+   struct timeval timestamp;
 
    /* V4L2 control variables */
    int v4l2_brightness, v4l2_brightness_min, v4l2_brightness_max;
@@ -483,8 +491,6 @@ static int try_init_v4l2(CvCaptureCAM_V4L* capture, char *deviceName)
   //  0 then detected nothing
   //  1 then V4L2 device
 
-  int deviceIndex;
-
   /* Open and test V4L2 device */
   capture->deviceHandle = open (deviceName, O_RDWR /* required */ | O_NONBLOCK, 0);
   if (-1 == capture->deviceHandle)
@@ -501,28 +507,6 @@ static int try_init_v4l2(CvCaptureCAM_V4L* capture, char *deviceName)
   {
 #ifndef NDEBUG
     fprintf(stderr, "(DEBUG) try_init_v4l2 VIDIOC_QUERYCAP \"%s\": %s\n", deviceName, strerror(errno));
-#endif
-    icvCloseCAM_V4L(capture);
-    return 0;
-  }
-
-  /* Query channels number */
-  if (-1 == ioctl (capture->deviceHandle, VIDIOC_G_INPUT, &deviceIndex))
-  {
-#ifndef NDEBUG
-    fprintf(stderr, "(DEBUG) try_init_v4l2 VIDIOC_G_INPUT \"%s\": %s\n", deviceName, strerror(errno));
-#endif
-    icvCloseCAM_V4L(capture);
-    return 0;
-  }
-
-  /* Query information about current input */
-  CLEAR (capture->inp);
-  capture->inp.index = deviceIndex;
-  if (-1 == ioctl (capture->deviceHandle, VIDIOC_ENUMINPUT, &capture->inp))
-  {
-#ifndef NDEBUG
-    fprintf(stderr, "(DEBUG) try_init_v4l2 VIDIOC_ENUMINPUT \"%s\": %s\n", deviceName, strerror(errno));
 #endif
     icvCloseCAM_V4L(capture);
     return 0;
@@ -632,24 +616,6 @@ static int autosetup_capture_mode_v4l(CvCaptureCAM_V4L* capture)
 
 #ifdef HAVE_CAMV4L2
 
-static void v4l2_scan_controls_enumerate_menu(CvCaptureCAM_V4L* capture)
-{
-//  printf (" Menu items:\n");
-  CLEAR (capture->querymenu);
-  capture->querymenu.id = capture->queryctrl.id;
-  for (capture->querymenu.index = capture->queryctrl.minimum;
-       (int)capture->querymenu.index <= capture->queryctrl.maximum;
-       capture->querymenu.index++)
-  {
-    if (0 == ioctl (capture->deviceHandle, VIDIOC_QUERYMENU,
-                     &capture->querymenu))
-    {
-//      printf (" %s\n", capture->querymenu.name);
-    } else {
-        perror ("VIDIOC_QUERYMENU");
-    }
-  }
-}
 
 static void v4l2_scan_controls(CvCaptureCAM_V4L* capture)
 {
@@ -714,8 +680,6 @@ static void v4l2_scan_controls(CvCaptureCAM_V4L* capture)
         capture->v4l2_exposure_max = capture->queryctrl.maximum;
       }
 
-      if (capture->queryctrl.type == V4L2_CTRL_TYPE_MENU)
-        v4l2_scan_controls_enumerate_menu(capture);
 
     } else {
 
@@ -784,9 +748,6 @@ static void v4l2_scan_controls(CvCaptureCAM_V4L* capture)
         capture->v4l2_exposure_max = capture->queryctrl.maximum;
       }
 
-      if (capture->queryctrl.type == V4L2_CTRL_TYPE_MENU)
-        v4l2_scan_controls_enumerate_menu(capture);
-
     } else {
 
       if (errno == EINVAL)
@@ -836,6 +797,9 @@ static int _capture_V4L2 (CvCaptureCAM_V4L *capture, char *deviceName)
    capture->v4l2_gain_max = 0;
    capture->v4l2_exposure_max = 0;
 
+   capture->timestamp.tv_sec = 0;
+   capture->timestamp.tv_usec = 0;
+
    /* Scan V4L2 controls */
    v4l2_scan_controls(capture);
 
@@ -845,26 +809,6 @@ static int _capture_V4L2 (CvCaptureCAM_V4L *capture, char *deviceName)
       icvCloseCAM_V4L(capture);
       return -1;
    }
-
-   /* The following code sets the CHANNEL_NUMBER of the video input.  Some video sources
-   have sub "Channel Numbers".  For a typical V4L TV capture card, this is usually 1.
-   I myself am using a simple NTSC video input capture card that uses the value of 1.
-   If you are not in North America or have a different video standard, you WILL have to change
-   the following settings and recompile/reinstall.  This set of settings is based on
-   the most commonly encountered input video source types (like my bttv card) */
-
-   if(capture->inp.index > 0) {
-       CLEAR (capture->inp);
-       capture->inp.index = CHANNEL_NUMBER;
-       /* Set only channel number to CHANNEL_NUMBER */
-       /* V4L2 have a status field from selected video mode */
-       if (-1 == ioctl (capture->deviceHandle, VIDIOC_ENUMINPUT, &capture->inp))
-       {
-         fprintf (stderr, "HIGHGUI ERROR: V4L2: Aren't able to set channel number\n");
-         icvCloseCAM_V4L (capture);
-         return -1;
-       }
-   } /* End if */
 
    /* Find Window info */
    CLEAR (capture->form);
@@ -1169,6 +1113,9 @@ static CvCaptureCAM_V4L * icvCaptureFromCAM_V4L (int index)
        }
 #endif  /* HAVE_CAMV4L */
 #ifdef HAVE_CAMV4L2
+#ifndef HAVE_CAMV4L
+       return NULL;
+#endif  /* !HAVE_CAMV4L */
    } else {
        V4L2_SUPPORT = 1;
    }
@@ -1220,6 +1167,9 @@ static int read_frame_v4l2(CvCaptureCAM_V4L* capture) {
 
    if (-1 == ioctl (capture->deviceHandle, VIDIOC_QBUF, &buf))
        perror ("VIDIOC_QBUF");
+
+   //set timestamp in capture struct to be timestamp of most recent frame
+   capture->timestamp = buf.timestamp;
 
    return 1;
 }
@@ -2308,6 +2258,13 @@ static double icvGetPropertyCAM_V4L (CvCaptureCAM_V4L* capture,
       /* initialize the control structure */
 
       switch (property_id) {
+      case CV_CAP_PROP_POS_MSEC:
+          if (capture->FirstCapture) {
+            return 0;
+          } else {
+            return 1000 * capture->timestamp.tv_sec + ((double) capture->timestamp.tv_usec) / 1000;
+          }
+          break;
       case CV_CAP_PROP_BRIGHTNESS:
           capture->control.id = V4L2_CID_BRIGHTNESS;
           break;

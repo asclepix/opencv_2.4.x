@@ -33,8 +33,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3, sobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0), std::tr1::make_tuple(1, 1), std::tr1::make_tuple(0, 2), std::tr1::make_tuple(2, 0), std::tr1::make_tuple(2, 2)),
-                testing::ValuesIn(BorderType3x3::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0), make_tuple(1, 1), make_tuple(0, 2), make_tuple(2, 0), make_tuple(2, 2)),
+                BorderType3x3::all()
             )
           )
 {
@@ -58,8 +58,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3ROI, sobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0), std::tr1::make_tuple(1, 1), std::tr1::make_tuple(0, 2), std::tr1::make_tuple(2, 0), std::tr1::make_tuple(2, 2)),
-                testing::ValuesIn(BorderType3x3ROI::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0), make_tuple(1, 1), make_tuple(0, 2), make_tuple(2, 0), make_tuple(2, 2)),
+                BorderType3x3ROI::all()
             )
           )
 {
@@ -86,8 +86,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border5x5, sobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0), std::tr1::make_tuple(1, 1), std::tr1::make_tuple(0, 2), std::tr1::make_tuple(2, 0)),
-                testing::ValuesIn(BorderType::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0), make_tuple(1, 1), make_tuple(0, 2), make_tuple(2, 0)),
+                BorderType::all()
             )
           )
 {
@@ -111,8 +111,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border5x5ROI, sobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0), std::tr1::make_tuple(1, 1), std::tr1::make_tuple(0, 2), std::tr1::make_tuple(2, 0)),
-                testing::ValuesIn(BorderTypeROI::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0), make_tuple(1, 1), make_tuple(0, 2), make_tuple(2, 0)),
+                BorderTypeROI::all()
             )
           )
 {
@@ -141,8 +141,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3, scharrFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0)),
-                testing::ValuesIn(BorderType3x3::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0)),
+                BorderType3x3::all()
             )
           )
 {
@@ -166,8 +166,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3ROI, scharrFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0)),
-                testing::ValuesIn(BorderType3x3ROI::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0)),
+                BorderType3x3ROI::all()
             )
           )
 {
@@ -194,8 +194,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3, scharrViaSobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0)),
-                testing::ValuesIn(BorderType3x3::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0)),
+                BorderType3x3::all()
             )
           )
 {
@@ -219,8 +219,8 @@ PERF_TEST_P(Size_MatType_dx_dy_Border3x3ROI, scharrViaSobelFilter,
             testing::Combine(
                 testing::Values(FILTER_SRC_SIZES),
                 testing::Values(CV_16S, CV_32F),
-                testing::Values(std::tr1::make_tuple(0, 1), std::tr1::make_tuple(1, 0)),
-                testing::ValuesIn(BorderType3x3ROI::all())
+                testing::Values(make_tuple(0, 1), make_tuple(1, 0)),
+                BorderType3x3ROI::all()
             )
           )
 {

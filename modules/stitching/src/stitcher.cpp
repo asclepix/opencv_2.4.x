@@ -58,10 +58,10 @@ Stitcher Stitcher::createDefault(bool try_use_gpu)
     stitcher.setFeaturesMatcher(new detail::BestOf2NearestMatcher(try_use_gpu));
     stitcher.setBundleAdjuster(new detail::BundleAdjusterRay());
 
-#ifdef HAVE_OPENCV_GPU
+#if defined(HAVE_OPENCV_GPU) && !defined(DYNAMIC_CUDA_SUPPORT)
     if (try_use_gpu && gpu::getCudaEnabledDeviceCount() > 0)
     {
-#ifdef HAVE_OPENCV_NONFREE
+#if defined(HAVE_OPENCV_NONFREE)
         stitcher.setFeaturesFinder(new detail::SurfFeaturesFinderGpu());
 #else
         stitcher.setFeaturesFinder(new detail::OrbFeaturesFinder());
@@ -478,7 +478,7 @@ void Stitcher::estimateCameraParams()
     {
         vector<Mat> rmats;
         for (size_t i = 0; i < cameras_.size(); ++i)
-            rmats.push_back(cameras_[i].R);
+            rmats.push_back(cameras_[i].R.clone());
         detail::waveCorrect(rmats, wave_correct_kind_);
         for (size_t i = 0; i < cameras_.size(); ++i)
             cameras_[i].R = rmats[i];

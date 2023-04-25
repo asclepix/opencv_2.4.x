@@ -229,7 +229,7 @@ Mat subspaceReconstruct(InputArray _W, InputArray _mean, InputArray _src)
         string error_message = format("Wrong mean shape for the given eigenvector matrix. Expected %d, but was %d.", W.cols, mean.total());
         CV_Error(CV_StsBadArg, error_message);
     }
-    // initalize temporary matrices
+    // initialize temporary matrices
     Mat X, Y;
     // copy data & make sure we are using the correct type
     src.convertTo(Y, W.type());
@@ -1100,15 +1100,14 @@ void LDA::compute(InputArrayOfArrays _src, InputArray _lbls) {
     }
 }
 
-// Projects samples into the LDA subspace.
+// Projects one or more row aligned samples into the LDA subspace.
 Mat LDA::project(InputArray src) {
-   return subspaceProject(_eigenvectors, Mat(), _dataAsRow ? src : src.getMat().t());
+   return subspaceProject(_eigenvectors, Mat(), src);
 }
 
-// Reconstructs projections from the LDA subspace.
+// Reconstructs projections from the LDA subspace from one or more row aligned samples.
 Mat LDA::reconstruct(InputArray src) {
-   return subspaceReconstruct(_eigenvectors, Mat(), _dataAsRow ? src : src.getMat().t());
+   return subspaceReconstruct(_eigenvectors, Mat(), src);
 }
 
 }
-
